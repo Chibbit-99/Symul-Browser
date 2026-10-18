@@ -12,7 +12,7 @@ from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton,
-    QProgressBar, QStatusBar, QVBoxLayout, QWidget,
+    QProgressBar, QStatusBar, QTabBar, QVBoxLayout, QWidget,
 )
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineScript
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -26,39 +26,46 @@ DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "sh
 BOOKMARKS_FILE = DATA_DIR / "bookmarks.json"
 
 STYLE = """
-QMainWindow, QWidget#browserRoot { background: #11191c; color: #e6edef; }
-QWidget { color: #e6edef; font-size: 10pt; }
-QWidget#chrome { background: #172226; border-bottom: 1px solid #29383d; }
-QWidget#bookmarkBar { background: #172226; border-bottom: 1px solid #29383d; }
+QMainWindow, QWidget#browserRoot { background: #ffffff; color: #202124; }
+QWidget { color: #202124; font-size: 10pt; }
+QWidget#chrome { background: #dee1e6; border-bottom: 1px solid #dadce0; }
+QWidget#bookmarkBar { background: #ffffff; border-bottom: 1px solid #dadce0; }
+QTabBar#tabStrip { background: #dee1e6; qproperty-drawBase: 0; }
+QTabBar#tabStrip::tab { background: transparent; color: #5f6368; border: 0; border-radius: 8px 8px 0 0; padding: 7px 12px; margin: 5px 2px 0 0; min-width: 90px; max-width: 240px; height: 22px; }
+QTabBar#tabStrip::tab:hover { background: #cfd3da; color: #202124; }
+QTabBar#tabStrip::tab:selected { background: #ffffff; color: #202124; }
+QTabBar#tabStrip QToolButton { background: transparent; border: 0; border-radius: 14px; min-width: 24px; min-height: 24px; }
+QTabBar#tabStrip QToolButton:hover { background: #cfd3da; }
 QPushButton#bookmarkItem { min-height: 28px; max-height: 28px; min-width: 0; padding: 0 9px; font-size: 9pt; border-radius: 6px; }
 QPushButton {
-  background: transparent; color: #c6d2d5; border: 0; border-radius: 9px;
+  background: transparent; color: #3c4043; border: 0; border-radius: 16px;
   min-width: 32px; min-height: 32px; padding: 0 4px; font-size: 17px;
 }
-QPushButton:hover { background: #2a393e; color: #ffffff; }
-QPushButton:pressed { background: #35494e; }
-QPushButton:disabled { color: #526166; }
+QPushButton:hover { background: #e8eaed; color: #202124; }
+QPushButton:pressed { background: #dadce0; }
+QPushButton:disabled { color: #b7b9bc; }
 QPushButton#brandButton { color: #77aaff; font-weight: 800; font-size: 20px; min-width: 36px; }
 QPushButton#menuButton { font-size: 23px; min-width: 36px; }
 QLineEdit#omnibox {
-  background: #0d1518; color: #edf5f6; border: 1px solid #293a40;
+  background: #f1f3f4; color: #202124; border: 1px solid transparent;
   border-radius: 18px; padding: 0 13px; min-height: 34px;
-  selection-background-color: #3978d4;
+  selection-background-color: #1a73e8;
 }
-QLineEdit#omnibox:focus { background: #0a1215; border: 1px solid #5b9bff; }
-QLabel#security { color: #9bb1b7; min-width: 24px; font-size: 16px; }
+QLineEdit#omnibox:hover { background: #e8eaed; }
+QLineEdit#omnibox:focus { background: #ffffff; border: 1px solid #1a73e8; }
+QLabel#security { color: #5f6368; min-width: 24px; font-size: 16px; }
 QLabel#brandWord { color: #77aaff; font-size: 12pt; font-weight: 700; padding-left: 2px; }
 QLabel#pageHint { color: #9bb1b7; padding: 2px 8px; }
 QProgressBar { background: #1a292e; border: 0; max-height: 2px; }
 QProgressBar::chunk { background: #4f8fff; }
 QMenu {
-  background: #1a272b; color: #e6edef; border: 1px solid #35474d;
-  padding: 6px; border-radius: 10px;
+  background: #ffffff; color: #202124; border: 1px solid #dadce0;
+  padding: 6px; border-radius: 8px;
 }
 QMenu::item { padding: 8px 28px 8px 12px; border-radius: 5px; }
-QMenu::item:selected { background: #2b4147; }
-QMenu::separator { height: 1px; background: #35474d; margin: 5px 8px; }
-QStatusBar { background: #172226; color: #9bb1b7; border-top: 1px solid #29383d; }
+QMenu::item:selected { background: #f1f3f4; }
+QMenu::separator { height: 1px; background: #dadce0; margin: 5px 8px; }
+QStatusBar { background: #ffffff; color: #5f6368; border-top: 1px solid #dadce0; }
 """
 
 class BrowserPage(QWebEnginePage):
@@ -179,8 +186,26 @@ class SymulBrowser(QMainWindow):
         chrome = QWidget(root)
         chrome.setObjectName("chrome")
         chrome_layout = QVBoxLayout(chrome)
-        chrome_layout.setContentsMargins(8, 6, 8, 6)
-        chrome_layout.setSpacing(2)
+        chrome_layout.setContentsMargins(8, 0, 8, 3)
+        chrome_layout.setSpacing(0)
+
+        tab_row = QHBoxLayout()
+        tab_row.setContentsMargins(0, 0, 0, 0)
+        tab_row.setSpacing(0)
+        self.tab_bar = QTabBar(chrome)
+        self.tab_bar.setObjectName("tabStrip")
+        self.tab_bar.setExpanding(False)
+        self.tab_bar.setUsesScrollButtons(True)
+        self.tab_bar.setTabsClosable(True)
+        self.tab_bar.setMovable(True)
+        self.tab_bar.setElideMode(Qt.TextElideMode.ElideRight)
+        self.tab_bar.currentChanged.connect(self._select_tab_from_bar)
+        self.tab_bar.tabCloseRequested.connect(self.close_tab)
+        tab_row.addWidget(self.tab_bar, 1)
+        self.new_tab_button = self.button("+", "New tab (Ctrl+T)", self.new_tab)
+        self.new_tab_button.setFixedSize(28, 28)
+        tab_row.addWidget(self.new_tab_button)
+        chrome_layout.addLayout(tab_row)
 
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
@@ -239,6 +264,7 @@ class SymulBrowser(QMainWindow):
 
         self.tabs = _TabStack(root)
         self.tabs.browser = self
+        self.tab_bar.currentChanged.connect(self.tabs.setCurrentIndex)
         root_layout.addWidget(self.tabs, 1)
         self.setCentralWidget(root)
 
@@ -363,10 +389,16 @@ class SymulBrowser(QMainWindow):
     def current_tab(self):
         return self.tabs.currentWidget()
 
+    def _select_tab_from_bar(self, index):
+        if hasattr(self, "tabs") and index >= 0 and index != self.tabs.currentIndex():
+            self.tabs.setCurrentIndex(index)
+
     def new_tab(self, url=HOME_URL):
         tab = BrowserTab(self.profile, self, self.tabs)
         index = self.tabs.addTab(tab, "New tab")
+        self.tab_bar.addTab("New tab")
         self.tabs.setCurrentIndex(index)
+        self.tab_bar.setCurrentIndex(index)
         tab.view.setUrl(QUrl(url))
         self.address.setFocus()
         self.address.selectAll()
@@ -381,6 +413,7 @@ class SymulBrowser(QMainWindow):
             return
         tab = self.tabs.widget(index)
         self.tabs.removeTab(index)
+        self.tab_bar.removeTab(index)
         tab.deleteLater()
         if self.tabs.count() == 0:
             self.new_tab()
@@ -390,7 +423,9 @@ class SymulBrowser(QMainWindow):
     def update_tab_title(self, tab, title):
         index = self.tabs.indexOf(tab)
         if index >= 0:
-            self.tabs.setTabText(index, (title or "New tab")[:80])
+            clean_title = (title or "New tab")[:80]
+            self.tabs.setTabText(index, clean_title)
+            self.tab_bar.setTabText(index, clean_title)
         if tab is self.current_tab():
             self.update_window_title()
 
@@ -404,6 +439,9 @@ class SymulBrowser(QMainWindow):
         if not tab:
             return
         self.address.setText(tab.view.url().toString())
+        index = self.tabs.currentIndex()
+        if index >= 0 and self.tab_bar.currentIndex() != index:
+            self.tab_bar.setCurrentIndex(index)
         self.update_security(tab.view.url())
         self.update_window_title()
         self.refresh_buttons()
