@@ -18,7 +18,7 @@ esac
 rm -rf -- "$INSTALL_DIR"
 rm -f -- "$DESKTOP_FILE"
 
-# Also clean up build files left by older source-based installers.
+# Clean up build files left by older source-based installers.
 rm -rf -- "$SCRIPT_DIR/.venv" "$SCRIPT_DIR/build" "$SCRIPT_DIR/dist" "$SCRIPT_DIR/__pycache__" "$SCRIPT_DIR/Symul-Browser.spec"
 
 if command -v update-desktop-database >/dev/null 2>&1; then
