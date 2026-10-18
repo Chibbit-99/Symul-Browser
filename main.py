@@ -1,22 +1,17 @@
 #!/usr/bin/env python3
-"""Symul Browser — an early PySide6 / Qt WebEngine browser prototype."""
+"""Symul Browser — a compact, keyboard-first desktop browser."""
 
+import json
 import sys
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
-from PySide6.QtCore import QUrl, Qt
+from PySide6.QtCore import QStandardPaths, QUrl, Qt, QTimer
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
-    QApplication,
-    QHBoxLayout,
-    QLineEdit,
-    QMainWindow,
-    QPushButton,
-    QTabWidget,
-    QToolBar,
-    QVBoxLayout,
-    QWidget,
+    QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
+    QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton,
+    QProgressBar, QShortcut, QStatusBar, QVBoxLayout, QWidget,
 )
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -26,71 +21,101 @@ APP_NAME = "Symul Browser"
 APP_DIR = Path(__file__).resolve().parent
 ICON_PATH = APP_DIR / "icon.png"
 HOME_URL = "https://duckduckgo.com/"
+DATA_DIR = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
+BOOKMARKS_FILE = DATA_DIR / "bookmarks.json"
+
+STYLE = """
+QMainWindow, QWidget#browserRoot { background: #11191c; color: #e6edef; }
+QWidget { color: #e6edef; font-size: 10pt; }
+QWidget#chrome { background: #172226; border-bottom: 1px solid #29383d; }
+QPushButton {
+  background: transparent; color: #c6d2d5; border: 0; border-radius: 9px;
+  min-width: 34px; min-height: 34px; padding: 0 7px; font-size: 15px;
+}
+QPushButton:hover { background: #2a393e; color: #ffffff; }
+QPushButton:pressed { background: #35494e; }
+QPushButton:disabled { color: #526166; }
+QPushButton#brandButton { color: #f0a27e; font-weight: 700; font-size: 17px; min-width: 38px; }
+QPushButton#menuButton { font-size: 20px; }
+QLineEdit#omnibox {
+  background: #0d1518; color: #edf5f6; border: 1px solid #293a40;
+  border-radius: 18px; padding: 0 13px; min-height: 38px;
+  selection-background-color: #bd6846;
+}
+QLineEdit#omnibox:focus { background: #0a1215; border: 1px solid #bd795a; }
+QLabel#security { color: #9bb1b7; min-width: 22px; font-size: 13px; }
+QLabel#brandWord { color: #f0a27e; font-size: 12pt; font-weight: 700; padding-left: 2px; }
+QLabel#pageHint { color: #9bb1b7; padding: 2px 8px; }
+QProgressBar { background: #1a292e; border: 0; max-height: 2px; }
+QProgressBar::chunk { background: #d47b56; }
+QMenu {
+  background: #1a272b; color: #e6edef; border: 1px solid #35474d;
+  padding: 6px; border-radius: 10px;
+}
+QMenu::item { padding: 8px 28px 8px 12px; border-radius: 5px; }
+QMenu::item:selected { background: #2b4147; }
+QMenu::separator { height: 1px; background: #35474d; margin: 5px 8px; }
+QStatusBar { background: #172226; color: #9bb1b7; border-top: 1px solid #29383d; }
+"""
+
+class BrowserPage(QWebEnginePage):
+    """A page that routes pop-up links into normal Symul tabs."""
+
+    def __init__(self, profile, browser, parent=None):
+        super().__init__(profile, parent)
+        self.browser = browser
+
+    def createWindow(self, _type):
+        tab = self.browser.new_tab("about:blank")
+        return tab.view.page()
 
 
 class BrowserTab(QWidget):
-    """A single page and its navigation controls."""
-
-    def __init__(self, profile: QWebEngineProfile, parent=None):
+    def __init__(self, profile, browser, parent=None):
         super().__init__(parent)
+        self.browser = browser
         self.view = QWebEngineView(self)
-        self.page = QWebEnginePage(profile, self.view)
+        self.page = BrowserPage(profile, browser, self.view)
         self.view.setPage(self.page)
-
-        self.address = QLineEdit(self)
-        self.address.setPlaceholderText("Search or enter address")
-        self.address.setClearButtonEnabled(True)
-        self.address.returnPressed.connect(self.navigate)
         self.view.urlChanged.connect(self.update_address)
+        self.view.titleChanged.connect(self.on_title_changed)
+        self.view.loadStarted.connect(self.on_load_started)
+        self.view.loadProgress.connect(self.browser.update_progress)
+        self.view.loadFinished.connect(self.on_load_finished)
+        self.view.iconChanged.connect(self.browser.update_page_icon)
 
-        back = QPushButton("←", self)
-        back.setToolTip("Back")
-        back.clicked.connect(self.view.back)
-        forward = QPushButton("→", self)
-        forward.setToolTip("Forward")
-        forward.clicked.connect(self.view.forward)
-        reload_button = QPushButton("⟳", self)
-        reload_button.setToolTip("Reload")
-        reload_button.clicked.connect(self.view.reload)
-        go = QPushButton("Go", self)
-        go.clicked.connect(self.navigate)
-
-        controls = QHBoxLayout()
-        controls.setContentsMargins(8, 8, 8, 4)
-        controls.setSpacing(6)
-        controls.addWidget(back)
-        controls.addWidget(forward)
-        controls.addWidget(reload_button)
-        controls.addWidget(self.address, 1)
-        controls.addWidget(go)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.addLayout(controls)
-        layout.addWidget(self.view, 1)
-
-        self.view.setUrl(QUrl(HOME_URL))
-
-    def navigate(self):
-        text = self.address.text().strip()
+    def navigate(self, text=None):
+        text = (self.address.text() if text is None else text).strip()
         if not text:
             return
-
-        # Explicit URLs are opened directly; other text is sent to DuckDuckGo.
         parsed = urlparse(text)
-        if parsed.scheme in ("http", "https"):
+        if parsed.scheme in ("http", "https", "file", "about"):
             target = text
-        elif " " not in text and "." in text:
+        elif " " not in text and ("." in text or text.startswith("localhost")):
             target = "https://" + text
         else:
             target = "https://duckduckgo.com/?q=" + quote(text)
-
         self.view.setUrl(QUrl(target))
 
-    def update_address(self, url: QUrl):
-        self.address.setText(url.toString())
+    def update_address(self, url):
+        if self.browser.tabs.currentWidget() is self:
+            self.browser.address.setText(url.toString())
+            self.browser.update_security(url)
 
+    def on_title_changed(self, title):
+        self.browser.update_tab_title(self, title)
+
+    def on_load_started(self):
+        if self.browser.tabs.currentWidget() is self:
+            self.browser.progress.setVisible(True)
+            self.browser.progress.setValue(0)
+            self.browser.statusBar().showMessage("Loading…")
+
+    def on_load_finished(self, ok):
+        if self.browser.tabs.currentWidget() is self:
+            self.browser.progress.setVisible(False)
+            self.browser.statusBar().showMessage("Ready" if ok else "Page couldn't be loaded", 2500)
+            self.browser.refresh_buttons()
 
 class SymulBrowser(QMainWindow):
     def __init__(self):
@@ -98,82 +123,164 @@ class SymulBrowser(QMainWindow):
         self.setWindowTitle(APP_NAME)
         if ICON_PATH.is_file():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
-        self.resize(1200, 800)
+        self.resize(1280, 820)
+        self.setMinimumSize(720, 480)
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-        # A persistent profile keeps cookies and site storage between launches.
         self.profile = QWebEngineProfile("SymulBrowser", self)
         self.profile.setPersistentCookiesPolicy(
             QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies
         )
+        self.profile.setPersistentStoragePath(str(DATA_DIR / "web-data"))
+        self.profile.setCachePath(str(DATA_DIR / "cache"))
+        self.profile.downloadRequested.connect(self.handle_download)
 
-        self.tabs = QTabWidget(self)
-        self.tabs.setDocumentMode(True)
-        self.tabs.setTabsClosable(True)
-        self.tabs.tabBar().hide()  # Prototype: no permanent tab strip.
-        self.tabs.tabCloseRequested.connect(self.close_tab)
-        self.tabs.currentChanged.connect(self.update_window_title)
-        self.setCentralWidget(self.tabs)
+        root = QWidget(self)
+        root.setObjectName("browserRoot")
+        root_layout = QVBoxLayout(root)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
-        self._build_menu()
+        chrome = QWidget(root)
+        chrome.setObjectName("chrome")
+        chrome_layout = QVBoxLayout(chrome)
+        chrome_layout.setContentsMargins(10, 8, 10, 8)
+        chrome_layout.setSpacing(5)
+
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(4)
+        self.brand = QPushButton("s", chrome)
+        self.brand.setObjectName("brandButton")
+        self.brand.setToolTip("Symul Browser — home")
+        self.brand.clicked.connect(lambda: self.current_tab().view.setUrl(QUrl(HOME_URL)))
+        row.addWidget(self.brand)
+
+        self.back_button = self.button("‹", "Back", lambda: self.current_tab().view.back())
+        self.forward_button = self.button("›", "Forward", lambda: self.current_tab().view.forward())
+        self.reload_button = self.button("↻", "Reload", self.reload_or_stop)
+        self.home_button = self.button("⌂", "Home", lambda: self.current_tab().view.setUrl(QUrl(HOME_URL)))
+        row.addWidget(self.back_button)
+        row.addWidget(self.forward_button)
+        row.addWidget(self.reload_button)
+        row.addWidget(self.home_button)
+
+        self.security = QLabel("◈", chrome)
+        self.security.setObjectName("security")
+        self.security.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        row.addWidget(self.security)
+
+        self.address = QLineEdit(chrome)
+        self.address.setObjectName("omnibox")
+        self.address.setPlaceholderText("Search Symul or enter an address")
+        self.address.setClearButtonEnabled(True)
+        self.address.setMinimumWidth(200)
+        self.address.returnPressed.connect(self.navigate)
+        self.address.installEventFilter(self)
+        row.addWidget(self.address, 1)
+
+        self.bookmark_button = self.button("☆", "Bookmark this page", self.toggle_bookmark)
+        row.addWidget(self.bookmark_button)
+        self.tabs_button = self.button("▣ 1", "Switch tabs (Ctrl+Tab)", self.show_tab_menu)
+        self.tabs_button.setMinimumWidth(54)
+        row.addWidget(self.tabs_button)
+        self.new_tab_button = self.button("+", "New tab (Ctrl+T)", lambda: self.new_tab())
+        row.addWidget(self.new_tab_button)
+        self.menu_button = self.button("⋮", "Symul menu", self.show_browser_menu)
+        self.menu_button.setObjectName("menuButton")
+        row.addWidget(self.menu_button)
+        chrome_layout.addLayout(row)
+
+        self.progress = QProgressBar(chrome)
+        self.progress.setTextVisible(False)
+        self.progress.setRange(0, 100)
+        self.progress.setFixedHeight(2)
+        self.progress.hide()
+        chrome_layout.addWidget(self.progress)
+        root_layout.addWidget(chrome)
+
+        self.tabs = _TabStack(root)
+        root_layout.addWidget(self.tabs, 1)
+        self.setCentralWidget(root)
+
+        status = QStatusBar(self)
+        self.setStatusBar(status)
+        self.statusBar().showMessage("Ready")
+
+        self._build_actions()
         self.new_tab()
+        self.apply_shortcuts()
 
-    def _build_menu(self):
-        toolbar = QToolBar("Browser", self)
-        toolbar.setMovable(False)
-        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
+    def button(self, text, tooltip, callback):
+        button = QPushButton(text, self)
+        button.setToolTip(tooltip)
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.clicked.connect(callback)
+        return button
 
-        new_tab_action = QAction("New tab", self)
-        new_tab_action.setShortcut(QKeySequence("Ctrl+T"))
-        new_tab_action.triggered.connect(self.new_tab)
-        self.addAction(new_tab_action)
+    def _build_actions(self):
+        self.actions_by_name = {}
+        entries = [
+            ("New tab", "Ctrl+T", lambda: self.new_tab()),
+            ("Close tab", "Ctrl+W", lambda: self.close_current_tab()),
+            ("Focus address bar", "Ctrl+L", self.focus_address),
+            ("Next tab", "Ctrl+Tab", self.next_tab),
+            ("Previous tab", "Ctrl+Shift+Tab", self.previous_tab),
+            ("Reload", "Ctrl+R", self.reload_or_stop),
+            ("Home", "Alt+Home", lambda: self.current_tab().view.setUrl(QUrl(HOME_URL))),
+            ("Back", "Alt+Left", lambda: self.current_tab().view.back()),
+            ("Forward", "Alt+Right", lambda: self.current_tab().view.forward()),
+            ("Find in page", "Ctrl+F", self.show_find_bar),
+            ("Zoom in", "Ctrl++", lambda: self.zoom(0.1)),
+            ("Zoom out", "Ctrl+-", lambda: self.zoom(-0.1)),
+            ("Reset zoom", "Ctrl+0", lambda: self.current_tab().view.setZoomFactor(1.0)),
+            ("Fullscreen", "F11", self.toggle_fullscreen),
+            ("Quit", "Ctrl+Q", self.close),
+        ]
+        for title, shortcut, callback in entries:
+            action = QAction(title, self)
+            action.setShortcut(QKeySequence(shortcut))
+            action.triggered.connect(callback)
+            self.addAction(action)
+            self.actions_by_name[title] = action
 
-        close_tab_action = QAction("Close tab", self)
-        close_tab_action.setShortcut(QKeySequence("Ctrl+W"))
-        close_tab_action.triggered.connect(
-            lambda: self.close_tab(self.tabs.currentIndex())
-        )
-        self.addAction(close_tab_action)
+    def apply_shortcuts(self):
+        self.find_bar = QWidget(self.centralWidget())
+        find_layout = QHBoxLayout(self.find_bar)
+        find_layout.setContentsMargins(12, 7, 12, 7)
+        find_layout.addWidget(QLabel("Find", self.find_bar))
+        self.find_input = QLineEdit(self.find_bar)
+        self.find_input.setPlaceholderText("Find on this page")
+        self.find_input.textChanged.connect(self.find_text)
+        find_layout.addWidget(self.find_input, 1)
+        self.find_count = QLabel("", self.find_bar)
+        find_layout.addWidget(self.find_count)
+        close_find = self.button("×", "Close find bar (Esc)", self.hide_find_bar)
+        find_layout.addWidget(close_find)
+        self.find_bar.hide()
+        self.find_bar.setStyleSheet("background:#172226; border-bottom:1px solid #29383d;")
+        self.find_bar.setGeometry(0, 0, 440, 52)
 
-        focus_address_action = QAction("Focus address", self)
-        focus_address_action.setShortcut(QKeySequence("Ctrl+L"))
-        focus_address_action.triggered.connect(self.focus_address)
-        self.addAction(focus_address_action)
+        self.find_escape = QShortcut(QKeySequence("Esc"), self.find_bar)
+        self.find_escape.activated.connect(self.hide_find_bar)
 
-        next_tab_action = QAction("Next tab", self)
-        next_tab_action.setShortcut(QKeySequence("Ctrl+Tab"))
-        next_tab_action.triggered.connect(self.next_tab)
-        self.addAction(next_tab_action)
+    def current_tab(self):
+        return self.tabs.currentWidget()
 
-        previous_tab_action = QAction("Previous tab", self)
-        previous_tab_action.setShortcut(QKeySequence("Ctrl+Shift+Tab"))
-        previous_tab_action.triggered.connect(self.previous_tab)
-        self.addAction(previous_tab_action)
-
-        menu = self.menuBar().addMenu("File")
-        menu.addAction(new_tab_action)
-        menu.addAction(close_tab_action)
-        menu.addSeparator()
-        menu.addAction("Quit", self.close, QKeySequence("Ctrl+Q"))
-
-        view_menu = self.menuBar().addMenu("Navigate")
-        view_menu.addAction(focus_address_action)
-        view_menu.addAction(next_tab_action)
-        view_menu.addAction(previous_tab_action)
-
-    def new_tab(self, url: str = HOME_URL):
-        tab = BrowserTab(self.profile, self.tabs)
+    def new_tab(self, url=HOME_URL):
+        tab = BrowserTab(self.profile, self, self.tabs)
         index = self.tabs.addTab(tab, "New tab")
         self.tabs.setCurrentIndex(index)
-        tab.view.titleChanged.connect(
-            lambda title, page_tab=tab: self.update_tab_title(page_tab, title)
-        )
-        if url != HOME_URL:
-            tab.view.setUrl(QUrl(url))
-        tab.address.setFocus()
-        tab.address.selectAll()
+        tab.view.setUrl(QUrl(url))
+        self.address.setFocus()
+        self.address.selectAll()
+        self.refresh_buttons()
         return tab
 
-    def close_tab(self, index: int):
+    def close_current_tab(self):
+        self.close_tab(self.tabs.currentIndex())
+
+    def close_tab(self, index):
         if index < 0 or index >= self.tabs.count():
             return
         tab = self.tabs.widget(index)
@@ -181,50 +288,296 @@ class SymulBrowser(QMainWindow):
         tab.deleteLater()
         if self.tabs.count() == 0:
             self.new_tab()
-        self.update_window_title()
+        self.sync_current_tab()
+        self.refresh_buttons()
 
-    def update_tab_title(self, tab: BrowserTab, title: str):
+    def update_tab_title(self, tab, title):
         index = self.tabs.indexOf(tab)
         if index >= 0:
-            self.tabs.setTabText(index, title or "New tab")
-        if tab is self.tabs.currentWidget():
+            self.tabs.setTabText(index, (title or "New tab")[:80])
+        if tab is self.current_tab():
             self.update_window_title()
 
     def update_window_title(self, *_):
-        tab = self.tabs.currentWidget()
-        title = tab.view.title() if isinstance(tab, BrowserTab) else ""
-        self.setWindowTitle(f"{title or 'New tab'} — {APP_NAME}")
+        tab = self.current_tab()
+        title = tab.view.title() if tab else ""
+        self.setWindowTitle((title or "New tab") + " — Symul Browser")
+
+    def sync_current_tab(self, *_):
+        tab = self.current_tab()
+        if not tab:
+            return
+        self.address.setText(tab.view.url().toString())
+        self.update_security(tab.view.url())
+        self.update_window_title()
+        self.refresh_buttons()
+        self.tabs_button.setText("▣ " + str(self.tabs.count()))
+        self.bookmark_button.setText("★" if self.is_bookmarked(tab.view.url().toString()) else "☆")
+        self.progress.setVisible(False)
+
+    def navigate(self):
+        self.current_tab().navigate()
 
     def focus_address(self):
-        tab = self.tabs.currentWidget()
-        if isinstance(tab, BrowserTab):
-            tab.address.setFocus()
-            tab.address.selectAll()
+        self.address.setFocus()
+        self.address.selectAll()
+
+    def refresh_buttons(self):
+        tab = self.current_tab()
+        if not tab:
+            return
+        self.back_button.setEnabled(tab.view.history().canGoBack())
+        self.forward_button.setEnabled(tab.view.history().canGoForward())
+        self.reload_button.setText("↻")
+        self.tabs_button.setText("▣ " + str(self.tabs.count()))
+
+    def reload_or_stop(self):
+        tab = self.current_tab()
+        if tab:
+            tab.view.reload()
+
+    def update_progress(self, value):
+        tab = self.current_tab()
+        if tab:
+            self.progress.setValue(value)
+            self.progress.setVisible(value < 100)
+
+    def update_security(self, url):
+        scheme = url.scheme()
+        self.security.setText("🔒" if scheme == "https" else ("ⓘ" if scheme in ("http", "file") else "◈"))
+        self.security.setToolTip("Secure connection (HTTPS)" if scheme == "https" else "Connection information")
+
+    def update_page_icon(self, icon):
+        if icon and not icon.isNull():
+            self.setWindowIcon(icon)
+        elif ICON_PATH.is_file():
+            self.setWindowIcon(QIcon(str(ICON_PATH)))
 
     def next_tab(self):
-        count = self.tabs.count()
-        if count > 1:
-            self.tabs.setCurrentIndex((self.tabs.currentIndex() + 1) % count)
+        if self.tabs.count() > 1:
+            self.tabs.setCurrentIndex((self.tabs.currentIndex() + 1) % self.tabs.count())
 
     def previous_tab(self):
-        count = self.tabs.count()
-        if count > 1:
-            self.tabs.setCurrentIndex((self.tabs.currentIndex() - 1) % count)
+        if self.tabs.count() > 1:
+            self.tabs.setCurrentIndex((self.tabs.currentIndex() - 1) % self.tabs.count())
 
+    def show_tab_menu(self):
+        menu = QMenu(self)
+        for i in range(self.tabs.count()):
+            tab = self.tabs.widget(i)
+            title = tab.view.title() or "New tab"
+            action = menu.addAction(("●  " if i == self.tabs.currentIndex() else "    ") + title[:55])
+            action.triggered.connect(lambda checked=False, index=i: self.tabs.setCurrentIndex(index))
+        menu.addSeparator()
+        menu.addAction("＋  New tab", lambda: self.new_tab())
+        menu.exec(self.tabs_button.mapToGlobal(self.tabs_button.rect().bottomLeft()))
 
-def main() -> int:
+    def show_browser_menu(self):
+        menu = QMenu(self)
+        menu.addAction("New tab", lambda: self.new_tab())
+        menu.addAction("New private window", self.private_window_notice)
+        menu.addSeparator()
+        menu.addAction("Bookmarks", self.show_bookmarks)
+        menu.addAction("History", self.show_history)
+        menu.addAction("Downloads", self.show_downloads)
+        menu.addSeparator()
+        menu.addAction("Find in page", self.show_find_bar)
+        zoom_menu = menu.addMenu("Zoom")
+        zoom_menu.addAction("Zoom in", lambda: self.zoom(0.1))
+        zoom_menu.addAction("Zoom out", lambda: self.zoom(-0.1))
+        zoom_menu.addAction("Reset zoom", lambda: self.current_tab().view.setZoomFactor(1.0))
+        menu.addSeparator()
+        menu.addAction("Settings & shortcuts", self.show_about)
+        menu.addAction("Quit Symul", self.close)
+        menu.exec(self.menu_button.mapToGlobal(self.menu_button.rect().bottomLeft()))
+
+    def toggle_bookmark(self):
+        tab = self.current_tab()
+        url = tab.view.url().toString()
+        if not url or url == "about:blank":
+            return
+        bookmarks = self.load_bookmarks()
+        existing = next((item for item in bookmarks if item.get("url") == url), None)
+        if existing:
+            bookmarks.remove(existing)
+        else:
+            bookmarks.append({"title": tab.view.title() or url, "url": url})
+        self.save_bookmarks(bookmarks)
+        self.bookmark_button.setText("★" if not existing else "☆")
+        self.statusBar().showMessage("Bookmark removed" if existing else "Page bookmarked", 2200)
+
+    def load_bookmarks(self):
+        try:
+            return json.loads(BOOKMARKS_FILE.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+
+    def save_bookmarks(self, bookmarks):
+        BOOKMARKS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        BOOKMARKS_FILE.write_text(json.dumps(bookmarks, indent=2), encoding="utf-8")
+
+    def is_bookmarked(self, url):
+        return any(item.get("url") == url for item in self.load_bookmarks())
+
+    def show_bookmarks(self):
+        menu = QMenu(self)
+        bookmarks = self.load_bookmarks()
+        if not bookmarks:
+            menu.addAction("No bookmarks yet").setEnabled(False)
+        else:
+            for item in bookmarks:
+                action = menu.addAction(item.get("title", item.get("url", "Bookmark"))[:60])
+                action.triggered.connect(lambda checked=False, url=item.get("url", ""): self.current_tab().view.setUrl(QUrl(url)))
+                remove = menu.addAction("   Remove: " + item.get("title", item.get("url", ""))[:45])
+                remove.triggered.connect(lambda checked=False, url=item.get("url", ""): self.remove_bookmark(url))
+        menu.exec(self.menu_button.mapToGlobal(self.menu_button.rect().bottomLeft()))
+
+    def remove_bookmark(self, url):
+        self.save_bookmarks([item for item in self.load_bookmarks() if item.get("url") != url])
+        self.sync_current_tab()
+
+    def show_history(self):
+        menu = QMenu(self)
+        history = self.current_tab().view.history().items()
+        history = list(reversed(history))[:30]
+        if not history:
+            menu.addAction("No history for this tab").setEnabled(False)
+        for item in history:
+            action = menu.addAction(item.title()[:60] or item.url().toString()[:60])
+            action.triggered.connect(lambda checked=False, url=item.url(): self.current_tab().view.setUrl(url))
+        menu.exec(self.menu_button.mapToGlobal(self.menu_button.rect().bottomLeft()))
+
+    def handle_download(self, download):
+        suggested = download.downloadFileName() or "download"
+        path, _ = QFileDialog.getSaveFileName(self, "Save download", str(Path.home() / suggested))
+        if not path:
+            download.cancel()
+            return
+        download.setDownloadDirectory(str(Path(path).parent))
+        download.setDownloadFileName(Path(path).name)
+        download.accept()
+        self.statusBar().showMessage("Downloading " + Path(path).name)
+
+    def show_downloads(self):
+        QMessageBox.information(self, "Downloads", "Downloads are saved to the location you choose when each download starts.")
+
+    def show_find_bar(self):
+        self.find_bar.show()
+        self.find_bar.raise_()
+        self.find_bar.setGeometry(0, 0, min(520, self.centralWidget().width()), 52)
+        self.find_input.setFocus()
+        self.find_input.selectAll()
+
+    def hide_find_bar(self):
+        self.find_bar.hide()
+        self.current_tab().view.findText("")
+        self.current_tab().view.setFocus()
+
+    def find_text(self, text):
+        self.current_tab().view.findText(text)
+        self.find_count.setText("Searching…" if text else "")
+
+    def zoom(self, amount):
+        tab = self.current_tab()
+        tab.view.setZoomFactor(max(0.5, min(3.0, tab.view.zoomFactor() + amount)))
+
+    def toggle_fullscreen(self):
+        self.showNormal() if self.isFullScreen() else self.showFullScreen()
+
+    def private_window_notice(self):
+        QMessageBox.information(self, "Private browsing", "Private browsing is not implemented yet. Symul currently uses your normal persistent browser profile.")
+
+    def show_about(self):
+        QMessageBox.information(
+            self, "Symul Browser",
+            "Symul Browser\\nA compact Chromium-based browser with a keyboard-first workflow.\\n\\n"
+            "Shortcuts\\n"
+            "Ctrl+T  New tab\\nCtrl+W  Close tab\\nCtrl+L  Focus address bar\\n"
+            "Ctrl+Tab / Ctrl+Shift+Tab  Switch tabs\\nCtrl+F  Find on page\\n"
+            "Ctrl+R  Reload\\nCtrl+Plus / Ctrl+Minus  Zoom\\nF11  Fullscreen\\n\\n"
+            "Built with PySide6 and Qt WebEngine."
+        )
+
+class _TabStack(QWidget):
+    """A tab container with no visible tab strip."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        from PySide6.QtWidgets import QStackedWidget
+        self.stack = QStackedWidget(self)
+        self._tabs = []
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.stack)
+
+    def addTab(self, widget, title):
+        self._tabs.append([widget, title])
+        self.stack.addWidget(widget)
+        return len(self._tabs) - 1
+
+    def count(self):
+        return len(self._tabs)
+
+    def widget(self, index):
+        return self._tabs[index][0] if 0 <= index < len(self._tabs) else None
+
+    def indexOf(self, widget):
+        return next((i for i, item in enumerate(self._tabs) if item[0] is widget), -1)
+
+    def currentIndex(self):
+        return self.stack.currentIndex()
+
+    def currentWidget(self):
+        return self.stack.currentWidget()
+
+    def setCurrentIndex(self, index):
+        if 0 <= index < len(self._tabs):
+            self.stack.setCurrentIndex(index)
+            if hasattr(self.parent(), "sync_current_tab"):
+                self.parent().sync_current_tab()
+
+    def setTabText(self, index, title):
+        if 0 <= index < len(self._tabs):
+            self._tabs[index][1] = title
+
+    def removeTab(self, index):
+        if 0 <= index < len(self._tabs):
+            widget = self._tabs[index][0]
+            self._tabs.pop(index)
+            self.stack.removeWidget(widget)
+            if self._tabs:
+                self.stack.setCurrentIndex(min(index, len(self._tabs) - 1))
+
+    def currentChanged(self, callback):
+        self.stack.currentChanged.connect(callback)
+
+    def tabCloseRequested(self, callback):
+        pass
+
+    def tabBar(self):
+        return None
+
+    def currentChangedConnect(self, callback):
+        self.stack.currentChanged.connect(callback)
+
+    def history(self):
+        tab = self.currentWidget()
+        return tab.view.history() if tab else None
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+def main():
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("Symul")
-    # Match the KDE launcher filename so the taskbar can group/pin this app,
-    # rather than identifying the running process as Python.
     app.setDesktopFileName("symul-browser")
+    app.setStyleSheet(STYLE)
     if ICON_PATH.is_file():
         app.setWindowIcon(QIcon(str(ICON_PATH)))
     window = SymulBrowser()
     window.show()
     return app.exec()
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
