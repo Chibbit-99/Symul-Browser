@@ -53,13 +53,14 @@ done
 
 echo "==> Downloading the prebuilt Symul Browser Linux bundle (~309 MB)"
 if command -v aria2c >/dev/null 2>&1; then
-    echo "Using aria2 with up to 8 parallel connections for a faster download."
+    # GitHub's release asset endpoint has returned inconsistent Content-Range
+    # totals for parallel requests. Use one connection to avoid ranged chunks.
+    echo "Using aria2 with a single connection to avoid GitHub range-response errors."
     if ! aria2c \
-        --max-connection-per-server=8 \
-        --split=8 \
-        --min-split-size=1M \
-        --max-tries=5 \
-        --retry-wait=2 \
+        --max-connection-per-server=1 \
+        --split=1 \
+        --max-tries=10 \
+        --retry-wait=3 \
         --continue=true \
         --summary-interval=1 \
         --console-log-level=warn \
@@ -74,7 +75,6 @@ if command -v aria2c >/dev/null 2>&1; then
         exit 1
     fi
 else
-    echo "Tip: install aria2 for parallel downloads: sudo apt install aria2"
     echo "Using curl with HTTP/1.1 and automatic retries."
     if ! curl --http1.1 --fail --location --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 --show-error --progress-bar "$RELEASE_URL" -o "$TMP_DIR/$ASSET"; then
         echo >&2
@@ -83,6 +83,13 @@ else
         echo "https://github.com/$REPO/actions" >&2
         exit 1
     fi
+fi
+
+# Reject truncated/corrupt downloads before replacing any installed files.
+echo "==> Verifying downloaded archive"
+if ! tar -tzf "$TMP_DIR/$ASSET" >/dev/null; then
+    echo "Error: downloaded archive is incomplete or corrupt; nothing was installed." >&2
+    exit 1
 fi
 
 echo "==> Extracting application bundle"
