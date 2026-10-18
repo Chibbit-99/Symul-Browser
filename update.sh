@@ -9,7 +9,7 @@ if [[ ! -d .git || ! -f main.py || ! -f requirements.txt ]]; then
     exit 1
 fi
 if [[ ! -x .venv/bin/python ]]; then
-    echo "Symul's virtual environment is missing. Run ./install.sh first." >&2
+    echo "Symul's virtual environment is missing. Run bash install.sh first." >&2
     exit 1
 fi
 
