@@ -240,7 +240,8 @@ class SymulBrowser(QMainWindow):
 
         # The browser chrome is rendered from the HTML prototype.
         self.chrome_view = QWebEngineView(root)
-        self.chrome_view.setFixedHeight(80)
+        # The prototype has a tab strip, toolbar and bookmarks row (~116 px).
+        self.chrome_view.setFixedHeight(120)
         self.chrome_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         chrome_page = QWebEnginePage(self.profile, self.chrome_view)
         self.chrome_view.setPage(chrome_page)
@@ -278,6 +279,9 @@ class SymulBrowser(QMainWindow):
         self.statusBar().showMessage("Ready")
 
         self.tabs = _TabStack(root)
+        self.tabs.setObjectName("tabContent")
+        self.tabs.setStyleSheet("background: #ffffff;")
+        self.tabs.stack.setStyleSheet("background: #ffffff;")
         self.tabs.browser = self
         root_layout.addWidget(self.tabs, 1)
         self.setCentralWidget(root)
@@ -288,6 +292,11 @@ class SymulBrowser(QMainWindow):
         self.refresh_bookmark_bar()
         self.new_tab()
         self.apply_shortcuts()
+        # QWebEngine can consume Ctrl+T before a content script sees it.
+        # Use an application-wide host shortcut for the test extension.
+        self.ctrl_t_extension_shortcut = QShortcut(QKeySequence("Ctrl+T"), self)
+        self.ctrl_t_extension_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        self.ctrl_t_extension_shortcut.activated.connect(self.handle_ctrl_t_extension)
 
     def sync_chrome(self):
         """Synchronise the HTML chrome with live WebEngine tabs and bookmarks."""
@@ -382,7 +391,6 @@ class SymulBrowser(QMainWindow):
         self.actions_by_name = {}
         entries = [
             ("New tab", "Alt+T", lambda: self.new_tab()),
-            ("Ctrl+T extension test", "Ctrl+T", self.handle_ctrl_t_extension),
             ("Close tab", "Ctrl+W", lambda: self.close_current_tab()),
             ("Focus address bar", "Ctrl+L", self.focus_address),
             ("Next tab", "Ctrl+Tab", self.next_tab),
@@ -534,7 +542,7 @@ class SymulBrowser(QMainWindow):
             self.tabs.setCurrentIndex((self.tabs.currentIndex() - 1) % self.tabs.count())
 
     def handle_ctrl_t_extension(self):
-        """Route Ctrl+T to the test extension because WebEngine consumes page shortcuts."""
+        """Run the local test extension's Ctrl+T alert reliably at browser level."""
         if any(extension.get("name") == "Symul Test Alert" for extension in self.local_extensions):
             tab = self.current_tab()
             if tab:
