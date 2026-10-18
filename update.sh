@@ -13,6 +13,12 @@ if [[ ! -x .venv/bin/python ]]; then
     exit 1
 fi
 
+if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Error: the checkout has local changes. Commit or stash them before updating." >&2
+    git status --short >&2
+    exit 1
+fi
+
 echo "Fetching updates..."
 git fetch --prune
 BRANCH="$(git symbolic-ref --quiet --short HEAD)" || {
