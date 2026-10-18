@@ -9,7 +9,12 @@ DESKTOP_FILE="$DESKTOP_DIR/$APP_ID.desktop"
 
 echo "This removes the installed Symul Browser and its application-menu entry."
 echo "It will not delete your source checkout or personal browser profile data."
-read -r -p "Continue? [y/N] " answer
+if [[ -r /dev/tty ]]; then
+    read -r -p "Continue? [y/N] " answer </dev/tty
+else
+    echo "No interactive terminal available; refusing to uninstall without confirmation." >&2
+    exit 1
+fi
 case "$answer" in
     y|Y|yes|YES) ;;
     *) echo "Cancelled."; exit 0 ;;
