@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
-from PySide6.QtCore import QObject, QUrl, Qt, Slot
+from PySide6.QtCore import QObject, QPoint, QUrl, Qt, Slot
 from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
@@ -275,10 +275,6 @@ class SymulBrowser(QMainWindow):
         self.tabs.browser = self
         root_layout.addWidget(self.tabs, 1)
         self.setCentralWidget(root)
-
-        status = QStatusBar(self)
-        self.setStatusBar(status)
-        self.statusBar().showMessage("Ready")
 
         self._build_actions()
         self.refresh_bookmark_bar()
@@ -553,7 +549,7 @@ class SymulBrowser(QMainWindow):
         menu.addSeparator()
         menu.addAction("Settings & shortcuts", self.show_about)
         menu.addAction("Quit Symul", self.close)
-        menu.exec(self.menu_button.mapToGlobal(self.menu_button.rect().bottomLeft()))
+        menu.exec(self.chrome_view.mapToGlobal(QPoint(self.chrome_view.width() - 36, self.chrome_view.height() - 18)))
 
     def toggle_bookmark(self):
         tab = self.current_tab()
@@ -616,7 +612,7 @@ class SymulBrowser(QMainWindow):
         menu.addAction("Extension folder", lambda: QMessageBox.information(
             self, "Local extensions", "Place supported unpacked extensions in the 'extensions' folder inside the Symul Browser repository. Only manifest content scripts are currently supported."
         ))
-        menu.exec(self.extensions_button.mapToGlobal(self.extensions_button.rect().bottomLeft()))
+        menu.exec(self.chrome_view.mapToGlobal(QPoint(self.chrome_view.width() - 160, 48)))
 
     def is_bookmarked(self, url):
         return any(item.get("url") == url for item in self.load_bookmarks())
