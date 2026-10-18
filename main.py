@@ -216,6 +216,9 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("Symul")
+    # Match the KDE launcher filename so the taskbar can group/pin this app,
+    # rather than identifying the running process as Python.
+    app.setDesktopFileName("symul-browser")
     if ICON_PATH.is_file():
         app.setWindowIcon(QIcon(str(ICON_PATH)))
     window = SymulBrowser()
