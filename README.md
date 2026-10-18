@@ -28,11 +28,11 @@ Copy and paste this command to install without cloning the repository:
 
 ```bash
 sudo apt update
-sudo apt install -y curl tar aria2
-curl -fsSL https://raw.githubusercontent.com/Chibbit-99/Symul-Browser/main/install.sh | bash
+sudo apt install -y curl tar
+curl -fsSL 'https://raw.githubusercontent.com/Chibbit-99/Symul-Browser/main/install.sh?cache=1' | bash
 ```
 
-The installer uses `aria2` for up to eight parallel download connections when available, which may improve throughput on connections that underuse a single stream. If `aria2` is unavailable, it falls back to `curl` over HTTP/1.1 with automatic retries. The approximately 309 MB bundle is followed by spinner indicators while extracting and copying the application files.
+The installer uses **curl only**—it does not use `aria2`. It downloads over HTTP/1.1 and retries transient failures automatically. Before installing, it checks that the downloaded archive is valid, so a truncated or corrupt download is rejected. The approximately 309 MB bundle is followed by spinner indicators while extracting and copying the application files.
 
 ### When is the downloadable build updated?
 
@@ -44,9 +44,10 @@ The installer downloads the rolling `main` build. To install a specific publishe
 ### What the installer does
 
 1. Checks that the machine is Linux x86_64 and that `curl` and `tar` are available.
-2. Downloads `symul-browser-linux-x86_64.tar.gz` from the project's rolling `main` GitHub Release, displaying download progress.
-3. Installs the prebuilt application to `~/.local/share/symul-browser/app/` (or the equivalent under `$XDG_DATA_HOME`).
-4. Creates `~/.local/share/applications/symul-browser.desktop`, so **Symul Browser** appears in the KDE application menu.
+2. Downloads `symul-browser-linux-x86_64.tar.gz` from the project's rolling `main` GitHub Release with curl retries and visible progress.
+3. Verifies the downloaded archive before extracting it.
+4. Installs the prebuilt application to `~/.local/share/symul-browser/app/` (or the equivalent under `$XDG_DATA_HOME`).
+5. Creates `~/.local/share/applications/symul-browser.desktop`, so **Symul Browser** appears in the KDE application menu.
 
 No Python, pip, virtual environment, or PyInstaller build is needed on the target computer. The bundle is built on Ubuntu 24.04 and may still require compatible system libraries on the Linux distribution where it runs.
 
