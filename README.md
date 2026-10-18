@@ -69,7 +69,7 @@ If you edited tracked files locally, commit or stash those changes before updati
 From the repository:
 
 ```bash
-./uninstall.sh
+bash uninstall.sh
 ```
 
 The uninstaller asks for confirmation and removes Symul's desktop launcher and virtual environment. It **keeps the Git checkout and your personal browser profile**. To remove the source code as well, delete the checkout manually after uninstalling, for example:
