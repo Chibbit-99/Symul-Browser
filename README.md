@@ -22,25 +22,29 @@ Because the tab strip is hidden, use the keyboard shortcuts to navigate between 
 
 ## Quick start: fork, clone, and install
 
-On Kubuntu/Ubuntu, install Git, GitHub CLI, Python, and venv support first if needed:
+**Git can clone repositories, but it cannot create a GitHub fork by itself.** To make your own fork, first open the repository on GitHub and click **Fork**:
 
-```bash
-sudo apt update
-sudo apt install git gh python3 python3-venv
-gh auth login
-```
+`https://github.com/Chibbit-99/Symul-Browser`
 
-Then copy-paste this script into a terminal. It forks the repository into your GitHub account, clones your fork, and runs the installer:
+Then copy-paste this script into a terminal, replacing `YOUR_GITHUB_USERNAME` with your GitHub username. It uses plain Git to clone your fork and runs the installer:
 
 ```bash
 set -e
-gh repo fork Chibbit-99/Symul-Browser --clone
+git clone https://github.com/YOUR_GITHUB_USERNAME/Symul-Browser.git
 cd Symul-Browser
 chmod +x install.sh uninstall.sh
 ./install.sh
 ```
 
-This requires the GitHub CLI (`gh`) to be authenticated. If you already have a clone/fork, just run `./install.sh` from that checkout instead.
+If you **don't need your own fork**, you can clone the original repository directly instead:
+
+```bash
+set -e
+git clone https://github.com/Chibbit-99/Symul-Browser.git
+cd Symul-Browser
+chmod +x install.sh uninstall.sh
+./install.sh
+```
 
 ## Install manually
 
@@ -48,7 +52,9 @@ Requirements: Linux desktop, Python 3, `python3-venv`, and an internet connectio
 
 ```bash
 sudo apt update
-sudo apt install python3 python3-venv
+sudo apt install git python3 python3-venv
+git clone https://github.com/Chibbit-99/Symul-Browser.git
+cd Symul-Browser
 chmod +x install.sh uninstall.sh
 ./install.sh
 ```
@@ -56,11 +62,11 @@ chmod +x install.sh uninstall.sh
 The installer:
 1. Creates a `.venv` in the repository.
 2. Installs PySide6 and PyInstaller into that environment.
-3. Builds a self-contained **PyInstaller onedir bundle**.
+3. Builds a **PyInstaller onedir bundle**.
 4. Installs the bundle under `~/.local/share/symul-browser/app/`.
 5. Adds a `.desktop` launcher to `~/.local/share/applications/`, so **Symul Browser** appears in the application menu.
 
-On Linux, PyInstaller produces an executable binary, not a Windows `.exe`. The build is intended for the Linux machine and architecture on which it is created; it is not a cross-platform package. The bundled Qt WebEngine may still rely on system libraries provided by the Linux distribution.
+On Linux, PyInstaller produces a Linux executable, not a Windows `.exe`. The build is intended for the Linux machine and architecture on which it is created; it is not a cross-platform package. The bundled Qt WebEngine may still rely on system libraries provided by the Linux distribution.
 
 Launch Symul Browser from the desktop application menu, or run:
 
