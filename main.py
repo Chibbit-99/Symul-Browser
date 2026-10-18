@@ -82,7 +82,6 @@ class BrowserTab(QWidget):
         self.view.loadStarted.connect(self.on_load_started)
         self.view.loadProgress.connect(self.browser.update_progress)
         self.view.loadFinished.connect(self.on_load_finished)
-        self.view.iconChanged.connect(self.browser.update_page_icon)
 
     def navigate(self, text=None):
         text = (self.browser.address.text() if text is None else text).strip()
@@ -376,7 +375,6 @@ class SymulBrowser(QMainWindow):
     def show_browser_menu(self):
         menu = QMenu(self)
         menu.addAction("New tab", lambda: self.new_tab())
-        menu.addAction("New private window", self.private_window_notice)
         menu.addSeparator()
         menu.addAction("Bookmarks", self.show_bookmarks)
         menu.addAction("History", self.show_history)
