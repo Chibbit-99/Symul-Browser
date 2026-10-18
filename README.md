@@ -13,7 +13,8 @@ There is **no permanent tab bar**. Tabs are switched from the tab button, with k
 - Pop-up links routed into a new Symul tab
 - Persistent cookies, cache and site storage between launches
 - Save-page downloads with a save-location prompt
-- Bookmarks saved locally and accessible from the browser menu
+- Bookmarks saved locally, shown in the toolbar bookmark row, and accessible from the browser menu
+- Toolbar shortcuts for loaded local extensions and downloads
 - Current-tab browsing history menu
 - Find-in-page bar, page zoom controls and fullscreen
 - Native desktop launcher and window identity for KDE taskbar pinning
