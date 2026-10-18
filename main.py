@@ -2,10 +2,11 @@
 """Symul Browser — an early PySide6 / Qt WebEngine browser prototype."""
 
 import sys
+from pathlib import Path
 from urllib.parse import quote, urlparse
 
 from PySide6.QtCore import QUrl, Qt
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -22,6 +23,8 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 
 
 APP_NAME = "Symul Browser"
+APP_DIR = Path(__file__).resolve().parent
+ICON_PATH = APP_DIR / "icon.png"
 HOME_URL = "https://duckduckgo.com/"
 
 
@@ -93,6 +96,8 @@ class SymulBrowser(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(APP_NAME)
+        if ICON_PATH.is_file():
+            self.setWindowIcon(QIcon(str(ICON_PATH)))
         self.resize(1200, 800)
 
         # A persistent profile keeps cookies and site storage between launches.
@@ -211,6 +216,8 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName("Symul")
+    if ICON_PATH.is_file():
+        app.setWindowIcon(QIcon(str(ICON_PATH)))
     window = SymulBrowser()
     window.show()
     return app.exec()
