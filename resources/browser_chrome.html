@@ -470,14 +470,14 @@ function renderBookmarks(){
 function closeTabMenu(){$("tabPopup").hidden=true;}
 $("tabMenuBtn").addEventListener("click",e=>{e.stopPropagation();$("tabPopup").hidden=!$("tabPopup").hidden;});
 document.addEventListener("click",e=>{if(!e.target.closest(".tab-menu-wrap"))closeTabMenu();});
-$("newTab").addEventListener("click",()=>{call("newTab");closeTabMenu();});
+$("newTab").addEventListener("click",()=>{call("newTab");closeTabMenu();$("address").focus();});
 $("address").addEventListener("keydown",e=>{if(e.key==="Enter"){call("navigate",$("address").value);$("address").blur();}if(e.key==="Escape"){$("address").blur();setBrowserState(state);}});
 $("address").addEventListener("focus",e=>e.target.select());
 $("back").addEventListener("click",()=>call("back"));$("forward").addEventListener("click",()=>call("forward"));$("reload").addEventListener("click",()=>call("reload"));$("home").addEventListener("click",()=>call("home"));$("star").addEventListener("click",()=>call("toggleBookmark"));
 document.querySelector('[aria-label="Extensions"]').addEventListener("click",()=>call("extensions"));
 document.querySelector('[aria-label="Downloads"]').addEventListener("click",()=>call("downloads"));
 document.querySelector('[aria-label="Menu"]').addEventListener("click",()=>call("menu"));
-document.addEventListener("keydown",e=>{const mod=e.ctrlKey||e.metaKey;if(mod&&e.key.toLowerCase()==="t"){e.preventDefault();call("newTab");}if(mod&&e.key.toLowerCase()==="w"){e.preventDefault();call("closeTab",state.active);}if(mod&&e.key.toLowerCase()==="l"){e.preventDefault();$("address").focus();}if(mod&&e.key.toLowerCase()==="r"){e.preventDefault();call("reload");}if(e.altKey&&e.key==="ArrowLeft")call("back");if(e.altKey&&e.key==="ArrowRight")call("forward");});
+document.addEventListener("keydown",e=>{const mod=e.ctrlKey||e.metaKey;if(mod&&e.key.toLowerCase()==="t"){e.preventDefault();call("newTab");$("address").focus();}if(mod&&e.key.toLowerCase()==="w"){e.preventDefault();call("closeTab",state.active);}if(mod&&e.key.toLowerCase()==="l"){e.preventDefault();$("address").focus();}if(mod&&e.key.toLowerCase()==="r"){e.preventDefault();call("reload");}if(e.altKey&&e.key==="ArrowLeft")call("back");if(e.altKey&&e.key==="ArrowRight")call("forward");});
 new QWebChannel(qt.webChannelTransport,channel=>{bridge=channel.objects.browserBridge;call("ready");});
 </script>
 </body></html>
