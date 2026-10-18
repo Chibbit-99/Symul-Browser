@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 APP_ID="symul-browser"
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO="Chibbit-99/Symul-Browser"
 INSTALL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/symul-browser"
 DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 DESKTOP_FILE="$DESKTOP_DIR/$APP_ID.desktop"
@@ -17,9 +17,6 @@ esac
 
 rm -rf -- "$INSTALL_DIR"
 rm -f -- "$DESKTOP_FILE"
-
-# Clean up build files left by older source-based installers.
-rm -rf -- "$SCRIPT_DIR/.venv" "$SCRIPT_DIR/build" "$SCRIPT_DIR/dist" "$SCRIPT_DIR/__pycache__" "$SCRIPT_DIR/Symul-Browser.spec"
 
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
