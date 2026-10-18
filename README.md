@@ -24,33 +24,94 @@ Open the **[GitHub Releases page](https://github.com/Chibbit-99/Symul-Browser/re
 This installs the archive you downloaded; it does **not** download the archive again. No Python, pip, PySide6, PyInstaller, curl, or compiler is required.
 
 ```bash
-set -e
-A="$HOME/Downloads/symul-browser-linux-x86_64.tar.gz"
-test -f "$A" || { echo "Archive not found: $A"; exit 1; }
-case "$(uname -m)" in x86_64|amd64) ;; *) echo "Linux x86_64 is required."; exit 1 ;; esac
-echo "Checking the archive (this may take a little while)..."
-tar -tzf "$A" >/dev/null
-T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
-echo "Extracting Symul Browser..."
-tar -xzf "$A" -C "$T"
-S="$T/Symul-Browser"; test -x "$S/Symul-Browser" || { echo "Invalid archive contents."; exit 1; }
-I="${XDG_DATA_HOME:-$HOME/.local/share}/symul-browser"
-D="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-mkdir -p "$I/app.new" "$D"
-echo "Installing application files..."
-cp -a "$S/." "$I/app.new/"
-chmod +x "$I/app.new/Symul-Browser"
-rm -rf "$I/app"; mv "$I/app.new" "$I/app"
-printf '[Desktop Entry]\nVersion=1.0\nType=Application\nName=Symul Browser\nGenericName=Web Browser\nComment=Experimental keyboard-first Qt WebEngine browser\nExec="%s" %%U\nIcon=web-browser\nTerminal=false\nCategories=Network;WebBrowser;\nStartupNotify=true\n' "$I/app/Symul-Browser" > "$D/symul-browser.desktop"
-chmod 644 "$D/symul-browser.desktop"
-command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$D" >/dev/null 2>&1 || true
-command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
-echo "Installed! Launch Symul Browser from the KDE application menu."
+install_symul_browser() {
+  A="$HOME/Downloads/symul-browser-linux-x86_64.tar.gz"
+  if [ ! -f "$A" ]; then echo "Archive not found: $A"; return 1; fi
+  case "$(uname -m)" in x86_64|amd64) ;; *) echo "Linux x86_64 is required."; return 1 ;; esac
+
+  echo "Checking the archive (this may take a little while)..."
+  if ! tar -tzf "$A" >/dev/null; then echo "The archive is damaged or incomplete."; return 1; fi
+
+  T="$(mktemp -d)" || { echo "Could not create a temporary directory."; return 1; }
+  echo "Extracting Symul Browser..."
+  if ! tar -xzf "$A" -C "$T"; then rm -rf "$T"; echo "Extraction failed."; return 1; fi
+  S="$T/Symul-Browser"
+  if [ ! -x "$S/Symul-Browser" ]; then rm -rf "$T"; echo "Invalid archive contents."; return 1; fi
+
+  I="${XDG_DATA_HOME:-$HOME/.local/share}/symul-browser"
+  D="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+  mkdir -p "$I" "$D" || { rm -rf "$T"; echo "Could not create installation directories."; return 1; }
+  rm -rf "$I/app.new"
+  mkdir -p "$I/app.new" || { rm -rf "$T"; echo "Could not prepare installation directory."; return 1; }
+  echo "Installing application files..."
+  if ! cp -a "$S/." "$I/app.new/" || ! chmod +x "$I/app.new/Symul-Browser"; then
+    rm -rf "$T" "$I/app.new"
+    echo "Copying application files failed."
+    return 1
+  fi
+  rm -rf "$I/app"
+  mv "$I/app.new" "$I/app" || { rm -rf "$T"; echo "Could not finish installation."; return 1; }
+  rm -rf "$T"
+
+  cat > "$D/symul-browser.desktop" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Symul Browser
+GenericName=Web Browser
+Comment=Experimental keyboard-first Qt WebEngine browser
+Exec="$I/app/Symul-Browser" %U
+Icon=web-browser
+Terminal=false
+Categories=Network;WebBrowser;
+StartupNotify=true
+EOF
+  chmod 644 "$D/symul-browser.desktop" || { echo "Installed, but could not set desktop entry permissions."; return 1; }
+  command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$D" >/dev/null 2>&1 || true
+  command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+  echo "Installed! Launch Symul Browser from the KDE application menu."
+}
+install_symul_browser
 ```
 
 The script checks the archive, extracts the application, installs it to `~/.local/share/symul-browser/app/`, and creates a KDE application-menu entry. If you saved the archive somewhere other than Downloads, change the `A=` path in the script.
 
 The prebuilt bundle is built on Ubuntu 24.04 and may require compatible system libraries on other Linux distributions.
+
+
+### Repair the application-menu entry
+
+If KDE reports that the desktop file has no `Exec` field, paste this into an **already-open Konsole window**. This command does not use `exit`, so a failed check will not close your shell.
+
+```bash
+repair_symul_entry() {
+  I="${XDG_DATA_HOME:-$HOME/.local/share}/symul-browser"
+  D="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+  if [ ! -x "$I/app/Symul-Browser" ]; then
+    echo "Browser executable not found at: $I/app/Symul-Browser"
+    echo "The installation may not have completed. Re-run the install steps above."
+    return 1
+  fi
+  mkdir -p "$D" || { echo "Could not create $D"; return 1; }
+  cat > "$D/symul-browser.desktop" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Symul Browser
+GenericName=Web Browser
+Comment=Experimental keyboard-first Qt WebEngine browser
+Exec="$I/app/Symul-Browser" %U
+Icon=web-browser
+Terminal=false
+Categories=Network;WebBrowser;
+StartupNotify=true
+EOF
+  chmod 644 "$D/symul-browser.desktop" || { echo "Could not set desktop file permissions."; return 1; }
+  command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+  echo "Desktop entry repaired. Search for Symul Browser in the KDE application launcher."
+}
+repair_symul_entry
+```
 
 ## Uninstall
 
