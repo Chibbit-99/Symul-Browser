@@ -468,7 +468,7 @@ function renderBookmarks(){
  });
 }
 function closeTabMenu(){$("tabPopup").hidden=true;}
-$("tabMenuBtn").addEventListener("click",e=>{e.stopPropagation();$("tabPopup").hidden=!$("tabPopup").hidden;});
+$("tabMenuBtn").addEventListener("click",e=>{e.stopPropagation();call("showTabMenu");});
 document.addEventListener("click",e=>{if(!e.target.closest(".tab-menu-wrap"))closeTabMenu();});
 $("newTab").addEventListener("click",()=>{call("newTab");closeTabMenu();$("address").focus();});
 $("address").addEventListener("keydown",e=>{if(e.key==="Enter"){call("navigate",$("address").value);$("address").blur();}if(e.key==="Escape"){$("address").blur();setBrowserState(state);}});
