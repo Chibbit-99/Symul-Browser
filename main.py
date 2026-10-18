@@ -85,7 +85,7 @@ class BrowserTab(QWidget):
         self.view.iconChanged.connect(self.browser.update_page_icon)
 
     def navigate(self, text=None):
-        text = (self.address.text() if text is None else text).strip()
+        text = (self.browser.address.text() if text is None else text).strip()
         if not text:
             return
         parsed = urlparse(text)
@@ -200,6 +200,7 @@ class SymulBrowser(QMainWindow):
         root_layout.addWidget(chrome)
 
         self.tabs = _TabStack(root)
+        self.tabs.browser = self
         root_layout.addWidget(self.tabs, 1)
         self.setCentralWidget(root)
 
@@ -533,8 +534,8 @@ class _TabStack(QWidget):
     def setCurrentIndex(self, index):
         if 0 <= index < len(self._tabs):
             self.stack.setCurrentIndex(index)
-            if hasattr(self.parent(), "sync_current_tab"):
-                self.parent().sync_current_tab()
+            if hasattr(self, "browser"):
+                self.browser.sync_current_tab()
 
     def setTabText(self, index, title):
         if 0 <= index < len(self._tabs):
