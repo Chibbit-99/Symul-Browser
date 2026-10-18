@@ -28,11 +28,11 @@ Copy and paste this command to install without cloning the repository:
 
 ```bash
 sudo apt update
-sudo apt install -y curl tar
+sudo apt install -y curl tar aria2
 curl -fsSL https://raw.githubusercontent.com/Chibbit-99/Symul-Browser/main/install.sh | bash
 ```
 
-The installer shows a `curl` progress bar while downloading the approximately 309 MB bundle, followed by spinner indicators while extracting and copying the application files.
+The installer uses `aria2` for up to eight parallel download connections when available, which may improve throughput on connections that underuse a single stream. If `aria2` is unavailable, it falls back to `curl` over HTTP/1.1 with automatic retries. The approximately 309 MB bundle is followed by spinner indicators while extracting and copying the application files.
 
 ### When is the downloadable build updated?
 
