@@ -22,19 +22,17 @@ Because the tab strip is hidden, use the keyboard shortcuts to navigate between 
 
 ## Quick install (Linux x86_64)
 
-GitHub Actions builds the application on GitHub and uploads the finished bundle as an asset on a GitHub Release. The installer downloads that built bundle; it does **not** install Python, PySide6, or PyInstaller or compile the app on your computer.
+GitHub Actions builds the application and uploads the finished bundle to a GitHub Release. The installer downloads that prebuilt bundle; it does **not** install Python, PySide6, or PyInstaller or compile the app on your computer.
 
-Copy and paste:
+Copy and paste this command to install without cloning the repository:
 
 ```bash
-set -e
 sudo apt update
-sudo apt install -y git curl tar
-git clone https://github.com/Chibbit-99/Symul-Browser.git
-cd Symul-Browser
-chmod +x install.sh uninstall.sh
-./install.sh
+sudo apt install -y curl tar
+curl -fsSL https://raw.githubusercontent.com/Chibbit-99/Symul-Browser/main/install.sh | bash
 ```
+
+The installer shows a `curl` progress bar while downloading the approximately 309 MB bundle, followed by spinner indicators while extracting and copying the application files.
 
 ### When is the downloadable build updated?
 
@@ -46,7 +44,7 @@ The installer downloads the rolling `main` build. To install a specific publishe
 ### What the installer does
 
 1. Checks that the machine is Linux x86_64 and that `curl` and `tar` are available.
-2. Downloads `symul-browser-linux-x86_64.tar.gz` from the project's rolling `main` GitHub Release.
+2. Downloads `symul-browser-linux-x86_64.tar.gz` from the project's rolling `main` GitHub Release, displaying download progress.
 3. Installs the prebuilt application to `~/.local/share/symul-browser/app/` (or the equivalent under `$XDG_DATA_HOME`).
 4. Creates `~/.local/share/applications/symul-browser.desktop`, so **Symul Browser** appears in the KDE application menu.
 
@@ -56,13 +54,13 @@ No Python, pip, virtual environment, or PyInstaller build is needed on the targe
 
 ## Uninstall
 
-From the source checkout:
+Copy and paste this command to uninstall without cloning the repository:
 
 ```bash
-./uninstall.sh
+curl -fsSL https://raw.githubusercontent.com/Chibbit-99/Symul-Browser/main/uninstall.sh | bash
 ```
 
-The uninstaller asks for confirmation, removes the installed application and application-menu entry, and cleans up old build files left by previous versions of the installer. It **does not delete your source checkout or personal browser profile data**.
+The uninstaller asks for confirmation and removes the installed application and application-menu entry. It **does not delete your source checkout or personal browser profile data**.
 
 ## Development
 
