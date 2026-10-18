@@ -1,38 +1,51 @@
 # Symul Browser
 
-**Symul Browser** is an experimental, keyboard-first desktop web browser built with Python, PySide6, and Qt WebEngine. Its tab strip stays hidden so the browser can keep its interface compact and let keyboard shortcuts handle tab navigation.
+**Symul Browser** is a compact desktop web browser built with Python, PySide6 and Qt WebEngine. The interface takes cues from Chrome's navigation layout while using Symul's own dark graphite, muted teal and warm-coral styling.
 
-> **Status:** Early prototype. It is not yet intended as a polished daily-driver replacement. Chrome extension support and a custom tab switcher are not implemented.
+There is **no permanent tab bar**. Tabs are switched from the tab button, with keyboard shortcuts for fast navigation.
 
 ## Features
 
-- Chromium-based page rendering through Qt WebEngine
-- Address bar that opens URLs or searches DuckDuckGo
-- Back, forward, and reload controls
-- Multiple tabs with no permanent visible tab strip
-- Persistent browser profile for cookies and site storage
-- Keyboard shortcuts:
-  - `Ctrl+T` — new tab
-  - `Ctrl+W` — close tab
-  - `Ctrl+L` — focus the address bar
-  - `Ctrl+Tab` — next tab
-  - `Ctrl+Shift+Tab` — previous tab
-  - `Ctrl+Q` — quit
+- Chromium-based rendering through Qt WebEngine
+- Rounded address/search bar: enter a URL or search DuckDuckGo
+- Back, forward, reload and home controls
+- Multiple tabs without a visible tab strip; use the tab switcher or keyboard shortcuts
+- Pop-up links routed into a new Symul tab
+- Persistent cookies, cache and site storage between launches
+- Save-page downloads with a save-location prompt
+- Bookmarks saved locally and accessible from the browser menu
+- Current-tab browsing history menu
+- Find-in-page bar, page zoom controls and fullscreen
+- Native desktop launcher and window identity for KDE taskbar pinning
 
-## Install on Linux
+## Keyboard shortcuts
 
-Symul is installed directly from its Git repository. There is no large prebuilt archive to download, no separate copy of the application to keep in sync, and no GitHub Actions build required. The repository you clone is the application installation.
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+T` | New tab |
+| `Ctrl+W` | Close current tab |
+| `Ctrl+L` | Focus and select the address bar |
+| `Ctrl+Tab` | Next tab |
+| `Ctrl+Shift+Tab` | Previous tab |
+| `Ctrl+R` | Reload |
+| `Alt+Left` / `Alt+Right` | Back / forward |
+| `Alt+Home` | Open home page |
+| `Ctrl+F` | Find in page |
+| `Ctrl++` / `Ctrl+-` | Zoom in / out |
+| `Ctrl+0` | Reset zoom |
+| `F11` | Toggle fullscreen |
+| `Ctrl+Q` | Quit |
 
-### 1. Install system prerequisites
+## Install on Kubuntu / Ubuntu
 
-On Kubuntu or Ubuntu:
+Install prerequisites:
 
 ```bash
 sudo apt update
 sudo apt install git python3 python3-venv python3-pip
 ```
 
-### 2. Clone the repository and install
+Clone and install:
 
 ```bash
 mkdir -p ~/Applications
@@ -41,88 +54,54 @@ cd ~/Applications/Symul-Browser
 bash install.sh
 ```
 
-The installer creates a local `.venv`, installs Python dependencies into it, and creates a desktop entry in `~/.local/share/applications/` (or the equivalent under `$XDG_DATA_HOME`). The desktop entry points directly to `main.py` in this checkout.
-
-Launch **Symul Browser** from your KDE application launcher. You can also run it from the repository with:
+The installer creates a local `.venv`, installs PySide6, and writes a launcher to `~/.local/share/applications/`. Launch **Symul Browser** from the application menu or run:
 
 ```bash
 .venv/bin/python main.py
 ```
 
-The first installation downloads PySide6 and its Qt components, so it may take a while and use several hundred megabytes of disk space. No `sudo` is needed for the installer.
+The first install downloads Qt/PySide6 components and may take a while. The installer does not need `sudo`.
 
 ## Update
 
-Close Symul Browser before updating, then run:
+Close Symul first, then:
 
 ```bash
 cd ~/Applications/Symul-Browser
 bash update.sh
 ```
 
-The updater fetches and fast-forwards the current Git branch, then refreshes the virtual environment's dependencies. You can also run `git pull --ff-only` yourself, but `update.sh` additionally updates dependencies.
-
-If you edited tracked files locally, commit or stash those changes before updating. Git will refuse to fast-forward if the checkout has diverged; the updater will not force-reset or overwrite your local work.
+The updater fast-forwards the Git checkout and refreshes dependencies. If you have local edits, commit or stash them before updating; it will not force-reset your work.
 
 ## Uninstall
 
-From the repository:
-
 ```bash
+cd ~/Applications/Symul-Browser
 bash uninstall.sh
 ```
 
-The uninstaller asks for confirmation and removes Symul's desktop launcher and virtual environment. It **keeps the Git checkout and your personal browser profile**. To remove the source code as well, delete the checkout manually after uninstalling, for example:
+The uninstaller removes the desktop launcher and virtual environment, but keeps the repository and personal browser data. Delete the repository manually if you also want to remove the source.
 
-```bash
-rm -rf ~/Applications/Symul-Browser
-```
+## Browser data
 
-Your personal browser profile is separate from the repository and is not removed by these commands.
+Symul stores its persistent profile, cache and bookmarks in the application-data directory chosen by Qt (normally under `~/.local/share/`). Cookies and site storage persist across launches. Bookmarks are stored in `bookmarks.json`.
+
+## Current limitations
+
+- Symul uses Qt WebEngine, which is Chromium-based but is not Google Chrome itself.
+- Chrome Web Store extensions are not supported by this app at present.
+- Private browsing, sync, a persistent global history page, and a dedicated downloads manager are not implemented.
+- Some websites may behave differently from Chrome because Qt WebEngine and its bundled Chromium version differ.
 
 ## Development
-
-The application uses Python 3 and PySide6. To run from source without installing a desktop launcher:
 
 ```bash
 sudo apt install python3 python3-venv
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m py_compile main.py
 .venv/bin/python main.py
 ```
 
-To check Python syntax without launching the browser:
-
-```bash
-.venv/bin/python -m py_compile main.py
-```
-
-## Project structure
-
-```text
-Symul-Browser/
-├── main.py          # Browser window, navigation, and tab handling
-├── requirements.txt # Python runtime dependencies
-├── install.sh       # Creates the virtual environment and desktop entry
-├── update.sh        # Fast-forward Git update and dependency refresh
-├── uninstall.sh     # Removes the launcher and virtual environment
-└── README.md
-```
-
-## Roadmap
-
-- [x] Basic browser window and page rendering
-- [x] Address bar, back/forward, and reload
-- [x] Hidden tab strip and keyboard tab controls
-- [x] Git-based installation and updates
-- [ ] Custom keyboard-driven tab switcher
-- [ ] Settings UI and profile controls
-- [ ] Investigate Qt WebEngine extension APIs
-- [ ] Test on clean Kubuntu installations
-
-## Notes
-
-Qt WebEngine is Chromium-based, but it is not the full Google Chrome browser. Extension support is not implemented, and Chrome Web Store extensions should not be assumed to work.
-
-**Design principle:** Qt WebEngine renders pages; PySide6 owns the browser interface and tab behaviour.
+**Design principle:** the page renderer is Qt WebEngine; Symul owns the browser chrome, navigation and tab workflow.
