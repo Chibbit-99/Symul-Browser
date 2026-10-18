@@ -1,102 +1,40 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_ID="symul-browser"
-REPO="Chibbit-99/Symul-Browser"
-ASSET="symul-browser-linux-x86_64.tar.gz"
-# The rolling main build is updated after each successful push to main.
-RELEASE_URL="https://github.com/$REPO/releases/download/main/$ASSET"
-INSTALL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/symul-browser"
-BIN_DIR="$INSTALL_DIR/app"
-DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-DESKTOP_FILE="$DESKTOP_DIR/$APP_ID.desktop"
-TMP_DIR="$(mktemp -d)"
-trap 'rm -rf -- "$TMP_DIR"' EXIT
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+DESKTOP_DIR="$DATA_HOME/applications"
+DESKTOP_FILE="$DESKTOP_DIR/symul-browser.desktop"
+VENV="$REPO_ROOT/.venv"
+PYTHON="${PYTHON:-python3}"
 
-run_with_spinner() {
-    local message="$1"
-    shift
-    local spinner='|/-\\'
-    local i=0
-    "$@" &
-    local pid=$!
-    while kill -0 "$pid" 2>/dev/null; do
-        printf '\r%s %s' "$message" "${spinner:i%4:1}"
-        i=$((i + 1))
-        sleep 0.12
-    done
-    if wait "$pid"; then
-        printf '\r%s done.\n' "$message"
-    else
-        local status=$?
-        printf '\r%s failed.\n' "$message" >&2
-        return "$status"
-    fi
-}
+if [[ ! -f "$REPO_ROOT/main.py" || ! -f "$REPO_ROOT/requirements.txt" ]]; then
+    echo "Error: run this script from a valid Symul Browser checkout." >&2
+    exit 1
+fi
 
-case "$(uname -m)" in
-    x86_64|amd64) ;;
-    *)
-        echo "Error: the prebuilt release currently supports Linux x86_64 only." >&2
-        echo "Detected architecture: $(uname -m)" >&2
-        exit 1
-        ;;
-esac
-
-for command_name in curl tar; do
+for command_name in git "$PYTHON"; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
-        echo "Error: '$command_name' is required. On Kubuntu/Ubuntu, run:" >&2
-        echo "  sudo apt install curl tar" >&2
+        echo "Error: required command not found: $command_name" >&2
         exit 1
     fi
 done
 
-echo "==> Downloading the prebuilt Symul Browser Linux bundle (~309 MB)"
-echo "Using curl over HTTP/1.1 with retries and resume support (aria2 is not used)."
-if ! curl --http1.1 \
-    --fail \
-    --location \
-    --continue-at - \
-    --retry 10 \
-    --retry-all-errors \
-    --retry-delay 3 \
-    --connect-timeout 30 \
-    --show-error \
-    --progress-bar \
-    "$RELEASE_URL" \
-    -o "$TMP_DIR/$ASSET"; then
-    echo >&2
-    echo "Could not download the latest main-branch build." >&2
-    echo "Check that the GitHub Actions build succeeded:" >&2
-    echo "https://github.com/$REPO/actions" >&2
+if ! "$PYTHON" -m venv --help >/dev/null 2>&1; then
+    echo "Python venv support is missing. On Kubuntu/Ubuntu, run:" >&2
+    echo "  sudo apt install python3-venv" >&2
     exit 1
 fi
 
-# Reject truncated/corrupt downloads before replacing any installed files.
-echo "==> Verifying downloaded archive"
-if ! tar -tzf "$TMP_DIR/$ASSET" >/dev/null; then
-    echo "Error: downloaded archive is incomplete or corrupt; nothing was installed." >&2
-    exit 1
+echo "==> Creating/updating the virtual environment"
+if [[ ! -x "$VENV/bin/python" ]]; then
+    "$PYTHON" -m venv "$VENV"
 fi
+"$VENV/bin/python" -m pip install --upgrade pip
+"$VENV/bin/python" -m pip install -r "$REPO_ROOT/requirements.txt"
 
-echo "==> Extracting application bundle"
-run_with_spinner "Extracting archive" tar -xzf "$TMP_DIR/$ASSET" -C "$TMP_DIR"
-if [[ ! -x "$TMP_DIR/Symul-Browser/Symul-Browser" ]]; then
-    echo "Error: downloaded archive did not contain the expected executable." >&2
-    exit 1
-fi
-
-echo "==> Installing application to $INSTALL_DIR"
+echo "==> Creating KDE application launcher"
 mkdir -p "$DESKTOP_DIR"
-# Stage the new app before replacing the current installation.
-STAGING_DIR="$INSTALL_DIR/app.new"
-rm -rf -- "$STAGING_DIR"
-mkdir -p "$STAGING_DIR"
-run_with_spinner "Copying application files" cp -a "$TMP_DIR/Symul-Browser/." "$STAGING_DIR/"
-chmod +x "$STAGING_DIR/Symul-Browser"
-rm -rf -- "$BIN_DIR"
-mv -- "$STAGING_DIR" "$BIN_DIR"
-
 cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Version=1.0
@@ -104,7 +42,8 @@ Type=Application
 Name=Symul Browser
 GenericName=Web Browser
 Comment=Experimental keyboard-first Qt WebEngine browser
-Exec="$BIN_DIR/Symul-Browser" %U
+Exec="$VENV/bin/python" "$REPO_ROOT/main.py" %U
+Path=$REPO_ROOT
 Icon=web-browser
 Terminal=false
 Categories=Network;WebBrowser;
@@ -120,8 +59,9 @@ if command -v kbuildsycoca6 >/dev/null 2>&1; then
 fi
 
 echo
-echo "Installed successfully."
-echo "Launch Symul Browser from the KDE application menu."
-echo "Executable: $BIN_DIR/Symul-Browser"
-echo "To uninstall, run:"
-echo "  curl -fsSL https://raw.githubusercontent.com/$REPO/main/uninstall.sh | bash"
+echo "Symul Browser is installed."
+echo "Source:   $REPO_ROOT"
+echo "Python:   $VENV/bin/python"
+echo "Launcher: $DESKTOP_FILE"
+echo "Launch Symul Browser from your application menu."
+echo "To update later, close the browser and run: $REPO_ROOT/update.sh"
