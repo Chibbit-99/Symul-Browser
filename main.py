@@ -150,14 +150,16 @@ class BrowserTab(QWidget):
 
     def on_load_started(self):
         if self.browser.tabs.currentWidget() is self:
-            self.browser.progress.setVisible(True)
+            self.browser.loading = True
             self.browser.progress.setValue(0)
+            self.browser.progress.hide()
             self.browser.statusBar().showMessage("Loading…")
             self.browser.sync_chrome()
 
     def on_load_finished(self, ok):
         if self.browser.tabs.currentWidget() is self:
-            self.browser.progress.setVisible(False)
+            self.browser.loading = False
+            self.browser.progress.hide()
             self.browser.statusBar().showMessage("Ready" if ok else "Page couldn't be loaded", 2500)
             self.browser.refresh_buttons()
             self.browser.sync_chrome()
@@ -277,6 +279,8 @@ class SymulBrowser(QMainWindow):
         self.tabs.browser = self
         root_layout.addWidget(self.tabs, 1)
         self.setCentralWidget(root)
+        self.statusBar().hide()
+        self.loading = False
 
         self._build_actions()
         self.refresh_bookmark_bar()
@@ -302,7 +306,7 @@ class SymulBrowser(QMainWindow):
             "title": current.view.title() if current else "New Tab",
             "canBack": bool(current and current.view.history().canGoBack()),
             "canForward": bool(current and current.view.history().canGoForward()),
-            "loading": bool(current and self.progress.isVisible() and self.progress.value() < 100),
+            "loading": bool(current and self.loading),
             "bookmarked": self.is_bookmarked(url) if url and url != "about:blank" else False,
             "bookmarks": self.load_bookmarks(),
         }
@@ -503,7 +507,8 @@ class SymulBrowser(QMainWindow):
         tab = self.current_tab()
         if tab:
             self.progress.setValue(value)
-            self.progress.setVisible(value < 100)
+            self.progress.hide()
+            self.loading = value < 100
             self.sync_chrome()
 
     def update_security(self, url):
