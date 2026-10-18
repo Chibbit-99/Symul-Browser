@@ -48,6 +48,7 @@ Icon=$REPO_ROOT/icon.png
 Terminal=false
 Categories=Network;WebBrowser;
 StartupNotify=true
+StartupWMClass=symul-browser
 EOF
 chmod 644 "$DESKTOP_FILE"
 
