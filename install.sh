@@ -13,6 +13,27 @@ DESKTOP_FILE="$DESKTOP_DIR/$APP_ID.desktop"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf -- "$TMP_DIR"' EXIT
 
+run_with_spinner() {
+    local message="$1"
+    shift
+    local spinner='|/-\\'
+    local i=0
+    "$@" &
+    local pid=$!
+    while kill -0 "$pid" 2>/dev/null; do
+        printf '\r%s %s' "$message" "${spinner:i%4:1}"
+        i=$((i + 1))
+        sleep 0.12
+    done
+    if wait "$pid"; then
+        printf '\r%s done.\n' "$message"
+    else
+        local status=$?
+        printf '\r%s failed.\n' "$message" >&2
+        return "$status"
+    fi
+}
+
 case "$(uname -m)" in
     x86_64|amd64) ;;
     *)
@@ -30,8 +51,8 @@ for command_name in curl tar; do
     fi
 done
 
-echo "==> Downloading the prebuilt Symul Browser Linux bundle"
-if ! curl --fail --location --retry 3 --silent --show-error "$RELEASE_URL" -o "$TMP_DIR/$ASSET"; then
+echo "==> Downloading the prebuilt Symul Browser Linux bundle (~309 MB)"
+if ! curl --fail --location --retry 3 --show-error --progress-bar "$RELEASE_URL" -o "$TMP_DIR/$ASSET"; then
     echo >&2
     echo "Could not download the latest main-branch build." >&2
     echo "Check that the GitHub Actions build succeeded:" >&2
@@ -40,7 +61,7 @@ if ! curl --fail --location --retry 3 --silent --show-error "$RELEASE_URL" -o "$
 fi
 
 echo "==> Extracting application bundle"
-tar -xzf "$TMP_DIR/$ASSET" -C "$TMP_DIR"
+run_with_spinner "Extracting archive" tar -xzf "$TMP_DIR/$ASSET" -C "$TMP_DIR"
 if [[ ! -x "$TMP_DIR/Symul-Browser/Symul-Browser" ]]; then
     echo "Error: downloaded archive did not contain the expected executable." >&2
     exit 1
@@ -52,7 +73,7 @@ mkdir -p "$DESKTOP_DIR"
 STAGING_DIR="$INSTALL_DIR/app.new"
 rm -rf -- "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
-cp -a "$TMP_DIR/Symul-Browser/." "$STAGING_DIR/"
+run_with_spinner "Copying application files" cp -a "$TMP_DIR/Symul-Browser/." "$STAGING_DIR/"
 chmod +x "$STAGING_DIR/Symul-Browser"
 rm -rf -- "$BIN_DIR"
 mv -- "$STAGING_DIR" "$BIN_DIR"
@@ -83,4 +104,5 @@ echo
 echo "Installed successfully."
 echo "Launch Symul Browser from the KDE application menu."
 echo "Executable: $BIN_DIR/Symul-Browser"
-echo "To uninstall, run ./uninstall.sh from this source checkout."
+echo "To uninstall, run:"
+echo "  curl -fsSL https://raw.githubusercontent.com/$REPO/main/uninstall.sh | bash"
