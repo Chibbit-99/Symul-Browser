@@ -1,15 +1,15 @@
 # Symul Browser
 
-**Symul Browser** is a compact desktop web browser built with Python, PySide6 and Qt WebEngine. The interface takes cues from Chrome's navigation layout while using Symul's own dark graphite, muted teal and warm-coral styling.
+**Symul Browser** is a compact desktop web browser built with Python, PySide6 and Qt WebEngine. The browser chrome is based directly on `resources/Browser UI.html`, with its SVG icons, CSS geometry, adaptive light/dark colours, rounded omnibox, tab-switcher popup and bookmarks row.
 
-The interface uses a visible Chrome-inspired tab strip, rounded omnibox, and a bookmarks row. Tabs can also be switched from the tab button or keyboard shortcuts.
+The HTML prototype is rendered as the live browser chrome and connected to real Qt WebEngine tabs using Qt WebChannel. The web page itself remains a real browser view, not the prototype’s placeholder content.
 
 ## Features
 
 - Chromium-based rendering through Qt WebEngine
 - Rounded address/search bar: enter a URL or search DuckDuckGo
 - Back, forward, reload and home controls
-- Visible Chrome-style tab strip with close buttons and a new-tab button
+- HTML tab-switcher popup with close buttons and new-tab action
 - Tabs can also be switched from the tab switcher or keyboard shortcuts
 - Pop-up links routed into a new Symul tab
 - Persistent cookies, cache and site storage between launches
@@ -24,7 +24,7 @@ The interface uses a visible Chrome-inspired tab strip, rounded omnibox, and a b
 
 | Shortcut | Action |
 | --- | --- |
-| `Ctrl+T` | New tab |
+| `Alt+T` | New tab |
 | `Ctrl+W` | Close current tab |
 | `Ctrl+L` | Focus and select the address bar |
 | `Ctrl+Tab` | Next tab |
