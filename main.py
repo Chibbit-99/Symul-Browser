@@ -29,9 +29,11 @@ STYLE = """
 QMainWindow, QWidget#browserRoot { background: #11191c; color: #e6edef; }
 QWidget { color: #e6edef; font-size: 10pt; }
 QWidget#chrome { background: #172226; border-bottom: 1px solid #29383d; }
+QWidget#bookmarkBar { background: #172226; border-bottom: 1px solid #29383d; }
+QPushButton#bookmarkItem { min-height: 28px; max-height: 28px; min-width: 0; padding: 0 9px; font-size: 9pt; border-radius: 6px; }
 QPushButton {
   background: transparent; color: #c6d2d5; border: 0; border-radius: 9px;
-  min-width: 38px; min-height: 38px; padding: 0 4px; font-size: 19px;
+  min-width: 32px; min-height: 32px; padding: 0 4px; font-size: 17px;
 }
 QPushButton:hover { background: #2a393e; color: #ffffff; }
 QPushButton:pressed { background: #35494e; }
@@ -40,7 +42,7 @@ QPushButton#brandButton { color: #77aaff; font-weight: 800; font-size: 20px; min
 QPushButton#menuButton { font-size: 23px; min-width: 36px; }
 QLineEdit#omnibox {
   background: #0d1518; color: #edf5f6; border: 1px solid #293a40;
-  border-radius: 18px; padding: 0 13px; min-height: 38px;
+  border-radius: 18px; padding: 0 13px; min-height: 34px;
   selection-background-color: #3978d4;
 }
 QLineEdit#omnibox:focus { background: #0a1215; border: 1px solid #5b9bff; }
@@ -178,17 +180,11 @@ class SymulBrowser(QMainWindow):
         chrome.setObjectName("chrome")
         chrome_layout = QVBoxLayout(chrome)
         chrome_layout.setContentsMargins(8, 6, 8, 6)
-        chrome_layout.setSpacing(3)
+        chrome_layout.setSpacing(2)
 
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(2)
-        self.brand = QPushButton("s", chrome)
-        self.brand.setObjectName("brandButton")
-        self.brand.setToolTip("Symul Browser — home")
-        self.brand.clicked.connect(lambda: self.current_tab().view.setUrl(QUrl(HOME_URL)))
-        row.addWidget(self.brand)
-
         self.back_button = self.button("‹", "Back", lambda: self.current_tab().view.back())
         self.forward_button = self.button("›", "Forward", lambda: self.current_tab().view.forward())
         self.reload_button = self.button("↻", "Reload", self.reload_or_stop)
@@ -217,12 +213,21 @@ class SymulBrowser(QMainWindow):
         self.tabs_button = self.button("▣ 1", "Switch tabs (Ctrl+Tab)", self.show_tab_menu)
         self.tabs_button.setMinimumWidth(54)
         row.addWidget(self.tabs_button)
-        self.new_tab_button = self.button("+", "New tab (Alt+T)", lambda: self.new_tab())
-        row.addWidget(self.new_tab_button)
+        self.extensions_button = self.button("🧩", "Loaded local extensions", self.show_extensions)
+        row.addWidget(self.extensions_button)
+        self.downloads_button = self.button("↓", "Downloads", self.show_downloads)
+        row.addWidget(self.downloads_button)
         self.menu_button = self.button("⋮", "Symul menu", self.show_browser_menu)
         self.menu_button.setObjectName("menuButton")
         row.addWidget(self.menu_button)
         chrome_layout.addLayout(row)
+
+        self.bookmark_bar = QWidget(chrome)
+        self.bookmark_bar.setObjectName("bookmarkBar")
+        self.bookmark_layout = QHBoxLayout(self.bookmark_bar)
+        self.bookmark_layout.setContentsMargins(8, 1, 8, 2)
+        self.bookmark_layout.setSpacing(2)
+        chrome_layout.addWidget(self.bookmark_bar)
 
         self.progress = QProgressBar(chrome)
         self.progress.setTextVisible(False)
@@ -242,6 +247,7 @@ class SymulBrowser(QMainWindow):
         self.statusBar().showMessage("Ready")
 
         self._build_actions()
+        self.refresh_bookmark_bar()
         self.new_tab()
         self.apply_shortcuts()
 
@@ -492,6 +498,7 @@ class SymulBrowser(QMainWindow):
         else:
             bookmarks.append({"title": tab.view.title() or url, "url": url})
         self.save_bookmarks(bookmarks)
+        self.refresh_bookmark_bar()
         self.bookmark_button.setText("★" if not existing else "☆")
         self.statusBar().showMessage("Bookmark removed" if existing else "Page bookmarked", 2200)
 
@@ -504,6 +511,41 @@ class SymulBrowser(QMainWindow):
     def save_bookmarks(self, bookmarks):
         BOOKMARKS_FILE.parent.mkdir(parents=True, exist_ok=True)
         BOOKMARKS_FILE.write_text(json.dumps(bookmarks, indent=2), encoding="utf-8")
+
+    def refresh_bookmark_bar(self):
+        """Render saved bookmarks in the compact toolbar row."""
+        if not hasattr(self, "bookmark_layout"):
+            return
+        while self.bookmark_layout.count():
+            item = self.bookmark_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        bookmarks = self.load_bookmarks()
+        for item in bookmarks[:12]:
+            title = (item.get("title") or item.get("url") or "Bookmark").strip()
+            url = item.get("url", "")
+            button = QPushButton(title[:24], self.bookmark_bar)
+            button.setObjectName("bookmarkItem")
+            button.setToolTip(url)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.clicked.connect(lambda checked=False, target=url: self.current_tab().view.setUrl(QUrl(target)))
+            self.bookmark_layout.addWidget(button)
+        self.bookmark_layout.addStretch(1)
+
+    def show_extensions(self):
+        menu = QMenu(self)
+        if not self.local_extensions:
+            menu.addAction("No local extensions loaded").setEnabled(False)
+        else:
+            for extension in self.local_extensions:
+                action = menu.addAction(extension["name"])
+                action.setEnabled(False)
+        menu.addSeparator()
+        menu.addAction("Extension folder", lambda: QMessageBox.information(
+            self, "Local extensions", "Place supported unpacked extensions in the 'extensions' folder inside the Symul Browser repository. Only manifest content scripts are currently supported."
+        ))
+        menu.exec(self.extensions_button.mapToGlobal(self.extensions_button.rect().bottomLeft()))
 
     def is_bookmarked(self, url):
         return any(item.get("url") == url for item in self.load_bookmarks())
@@ -523,6 +565,7 @@ class SymulBrowser(QMainWindow):
 
     def remove_bookmark(self, url):
         self.save_bookmarks([item for item in self.load_bookmarks() if item.get("url") != url])
+        self.refresh_bookmark_bar()
         self.sync_current_tab()
 
     def show_history(self):
