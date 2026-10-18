@@ -153,12 +153,14 @@ class BrowserTab(QWidget):
             self.browser.progress.setVisible(True)
             self.browser.progress.setValue(0)
             self.browser.statusBar().showMessage("Loading…")
+            self.browser.sync_chrome()
 
     def on_load_finished(self, ok):
         if self.browser.tabs.currentWidget() is self:
             self.browser.progress.setVisible(False)
             self.browser.statusBar().showMessage("Ready" if ok else "Page couldn't be loaded", 2500)
             self.browser.refresh_buttons()
+            self.browser.sync_chrome()
 
 class BrowserChromeBridge(QObject):
     """JavaScript bridge between the HTML chrome and real Qt WebEngine tabs."""
@@ -490,6 +492,7 @@ class SymulBrowser(QMainWindow):
         self.forward_button.setEnabled(tab.view.history().canGoForward())
         self.reload_button.setText("↻")
         self.tabs_button.setText("▣ " + str(self.tabs.count()))
+        self.sync_chrome()
 
     def reload_or_stop(self):
         tab = self.current_tab()
