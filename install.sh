@@ -52,12 +52,37 @@ for command_name in curl tar; do
 done
 
 echo "==> Downloading the prebuilt Symul Browser Linux bundle (~309 MB)"
-if ! curl --fail --location --retry 3 --show-error --progress-bar "$RELEASE_URL" -o "$TMP_DIR/$ASSET"; then
-    echo >&2
-    echo "Could not download the latest main-branch build." >&2
-    echo "Check that the GitHub Actions build succeeded:" >&2
-    echo "https://github.com/$REPO/actions" >&2
-    exit 1
+if command -v aria2c >/dev/null 2>&1; then
+    echo "Using aria2 with up to 8 parallel connections for a faster download."
+    if ! aria2c \
+        --max-connection-per-server=8 \
+        --split=8 \
+        --min-split-size=1M \
+        --max-tries=5 \
+        --retry-wait=2 \
+        --continue=true \
+        --summary-interval=1 \
+        --console-log-level=warn \
+        --download-result=hide \
+        --dir="$TMP_DIR" \
+        --out="$ASSET" \
+        "$RELEASE_URL"; then
+        echo >&2
+        echo "Could not download the latest main-branch build." >&2
+        echo "Check that the GitHub Actions build succeeded:" >&2
+        echo "https://github.com/$REPO/actions" >&2
+        exit 1
+    fi
+else
+    echo "Tip: install aria2 for parallel downloads: sudo apt install aria2"
+    echo "Using curl with HTTP/1.1 and automatic retries."
+    if ! curl --http1.1 --fail --location --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 --show-error --progress-bar "$RELEASE_URL" -o "$TMP_DIR/$ASSET"; then
+        echo >&2
+        echo "Could not download the latest main-branch build." >&2
+        echo "Check that the GitHub Actions build succeeded:" >&2
+        echo "https://github.com/$REPO/actions" >&2
+        exit 1
+    fi
 fi
 
 echo "==> Extracting application bundle"
