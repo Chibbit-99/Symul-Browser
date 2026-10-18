@@ -38,7 +38,7 @@ sudo apt install git python3 python3-venv python3-pip
 mkdir -p ~/Applications
 git clone https://github.com/Chibbit-99/Symul-Browser.git ~/Applications/Symul-Browser
 cd ~/Applications/Symul-Browser
-./install.sh
+bash install.sh
 ```
 
 The installer creates a local `.venv`, installs Python dependencies into it, and creates a desktop entry in `~/.local/share/applications/` (or the equivalent under `$XDG_DATA_HOME`). The desktop entry points directly to `main.py` in this checkout.
@@ -57,7 +57,7 @@ Close Symul Browser before updating, then run:
 
 ```bash
 cd ~/Applications/Symul-Browser
-./update.sh
+bash update.sh
 ```
 
 The updater fetches and fast-forwards the current Git branch, then refreshes the virtual environment's dependencies. You can also run `git pull --ff-only` yourself, but `update.sh` additionally updates dependencies.
