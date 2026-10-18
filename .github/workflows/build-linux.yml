@@ -3,6 +3,10 @@ name: Build Linux application
 on:
   push:
     branches: [main]
+    tags:
+      - "*"
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -19,6 +23,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          # Do not enable pip caching unless a requirements.txt or pyproject.toml exists.
 
       - name: Install build dependencies
         run: |
@@ -44,15 +49,31 @@ jobs:
       - name: Package Linux x86_64 bundle
         run: tar -czf symul-browser-linux-x86_64.tar.gz -C dist Symul-Browser
 
-      - name: Publish/update nightly release
+      - name: Choose release tag
+        id: release
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ "$EVENT_NAME" == "release" && -n "$RELEASE_TAG" ]]; then
+            echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "push" && "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "tag=$REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=nightly" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish/update release asset
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nightly
-          name: Symul Browser Nightly
-          prerelease: true
-          make_latest: false
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: Symul Browser ${{ steps.release.outputs.tag }}
+          prerelease: ${{ steps.release.outputs.tag == 'nightly' }}
+          make_latest: ${{ steps.release.outputs.tag == 'nightly' && 'false' || 'true' }}
           overwrite_files: true
           files: symul-browser-linux-x86_64.tar.gz
           body: |
-            Automatically built Linux x86_64 bundle from the latest successful build of the main branch.
+            Automatically built Linux x86_64 bundle for this source revision.
             This is an experimental build, not a stable release.
