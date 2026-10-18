@@ -69,6 +69,7 @@ class BrowserPage(QWebEnginePage):
 
     def install_local_extensions(self):
         """Install manifest content scripts using Qt's built-in JavaScript injection."""
+        newline = chr(10)
         for extension in self.browser.local_extensions:
             for item in extension["scripts"]:
                 script = QWebEngineScript()
@@ -78,20 +79,17 @@ class BrowserPage(QWebEnginePage):
                 script.setRunsOnSubFrames(item["all_frames"])
                 matches_json = json.dumps(item["matches"])
                 source = (
-                    "(() => {\\n"
-                    + "const patterns = " + matches_json + ";\\n"
-                    + "const url = window.location.href;\\n"
-                    + "const allowed = patterns.some(pattern => {\\n"
-                    + "if (pattern === '<all_urls>') return /^(https?|file|ftp):/i.test(url);\\n"
-                    + "const parts = pattern.split('://');\\n"
-                    + "if (parts.length !== 2) return false;\\n"
-                    + "const scheme = parts[0] === '*' ? 'https?' : parts[0];\\n"
-                    + "const hostPath = parts[1].split('*').map(part => part.replaceAll('.', '\\\\.')).join('.*');\\n"
-                    + "return new RegExp('^' + scheme + '://' + hostPath + '$', 'i').test(url);\\n"
-                    + "});\\n"
-                    + "if (allowed) {\\n"
-                    + item["source"]
-                    + "\\n}\\n})();"
+                    "(() => {" + newline
+                    + "const patterns = " + matches_json + ";" + newline
+                    + "const url = window.location.href;" + newline
+                    + "const allowed = patterns.some(pattern => {" + newline
+                    + "if (pattern === '<all_urls>') return /^(https?|file|ftp):/i.test(url);" + newline
+                    + "const prefix = pattern.split('*')[0];" + newline
+                    + "return url.startsWith(prefix);" + newline
+                    + "});" + newline
+                    + "if (allowed) {" + newline
+                    + item["source"] + newline
+                    + "}" + newline + "})();"
                 )
                 script.setSourceCode(source)
                 self.scripts().insert(script)
