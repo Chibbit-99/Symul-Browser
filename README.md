@@ -20,75 +20,51 @@
 
 Because the tab strip is hidden, use the keyboard shortcuts to navigate between tabs.
 
-## Quick start: fork, clone, and install
+## Quick install (Linux x86_64)
 
-**Git can clone repositories, but it cannot create a GitHub fork by itself.** To make your own fork, first open the repository on GitHub and click **Fork**:
+The Linux bundle is built in the cloud by GitHub Actions. Installing does **not** create a Python virtual environment or install PySide6/PyInstaller on your computer; it downloads the prebuilt bundle and adds a KDE application-menu entry.
 
-`https://github.com/Chibbit-99/Symul-Browser`
-
-Then copy-paste this script into a terminal, replacing `YOUR_GITHUB_USERNAME` with your GitHub username. It uses plain Git to clone your fork and runs the installer:
+Copy and paste:
 
 ```bash
 set -e
-git clone https://github.com/YOUR_GITHUB_USERNAME/Symul-Browser.git
-cd Symul-Browser
-chmod +x install.sh uninstall.sh
-./install.sh
-```
-
-If you **don't need your own fork**, you can clone the original repository directly instead:
-
-```bash
-set -e
-git clone https://github.com/Chibbit-99/Symul-Browser.git
-cd Symul-Browser
-chmod +x install.sh uninstall.sh
-./install.sh
-```
-
-## Install manually
-
-Requirements: Linux desktop, Python 3, `python3-venv`, and an internet connection for downloading Python packages.
-
-```bash
 sudo apt update
-sudo apt install git python3 python3-venv
+sudo apt install -y git curl tar
 git clone https://github.com/Chibbit-99/Symul-Browser.git
 cd Symul-Browser
 chmod +x install.sh uninstall.sh
 ./install.sh
 ```
 
-The installer:
-1. Creates a `.venv` in the repository.
-2. Installs PySide6 and PyInstaller into that environment.
-3. Builds a **PyInstaller onedir bundle**.
-4. Installs the bundle under `~/.local/share/symul-browser/app/`.
-5. Adds a `.desktop` launcher to `~/.local/share/applications/`, so **Symul Browser** appears in the application menu.
+You can make a fork on GitHub first and clone your fork instead. The installer currently downloads the published upstream nightly binary. A fork's own source changes will only be included in its binary after its GitHub Actions workflow has run and published that fork's nightly release.
 
-On Linux, PyInstaller produces a Linux executable, not a Windows `.exe`. The build is intended for the Linux machine and architecture on which it is created; it is not a cross-platform package. The bundled Qt WebEngine may still rely on system libraries provided by the Linux distribution.
+### What the installer does
 
-Launch Symul Browser from the desktop application menu, or run:
+1. Checks that the machine is Linux x86_64 and that `curl` and `tar` are available.
+2. Downloads `symul-browser-linux-x86_64.tar.gz` from the project's GitHub nightly release.
+3. Extracts the prebuilt application to `~/.local/share/symul-browser/app/` (or the equivalent under `$XDG_DATA_HOME`).
+4. Creates `~/.local/share/applications/symul-browser.desktop`, so **Symul Browser** appears in the application menu.
 
-```bash
-~/.local/share/symul-browser/app/Symul-Browser
-```
+No Python, pip, virtual environment, or PyInstaller build is needed on the target computer. The bundle is built on Ubuntu 24.04 and may still require compatible system libraries on the Linux distribution where it runs.
+
+**If installation says the nightly build cannot be downloaded**, the GitHub Actions workflow may not have run successfully yet. Check the [Actions page](https://github.com/Chibbit-99/Symul-Browser/actions) and wait for a successful build/release.
 
 ## Uninstall
 
-From the same source checkout:
+From the source checkout:
 
 ```bash
 ./uninstall.sh
 ```
 
-The uninstaller asks for confirmation, removes the installed app and application-menu entry, and deletes generated build/virtual-environment files (`.venv`, `build/`, and `dist/`) from that checkout. It **does not delete your source checkout**. It also does not remove your personal browser profile or browsing data.
+The uninstaller asks for confirmation, removes the installed application and application-menu entry, and cleans up any old build files left by previous versions of the installer. It **does not delete your source checkout or personal browser profile data**.
 
 ## Development
 
-To run directly without packaging:
+To run from source:
 
 ```bash
+sudo apt install python3 python3-venv
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
@@ -96,11 +72,11 @@ python -m pip install PySide6
 python main.py
 ```
 
-Build manually (the installer does this for you):
+To build locally (optional):
 
 ```bash
-.venv/bin/python -m pip install PyInstaller
-.venv/bin/python -m PyInstaller --clean --noconfirm --windowed --onedir --name Symul-Browser --collect-all PySide6 --collect-all shiboken6 main.py
+python -m pip install PyInstaller
+python -m PyInstaller --clean --noconfirm --windowed --onedir --name Symul-Browser --collect-all PySide6 --collect-all shiboken6 --distpath dist --workpath build --specpath build main.py
 ```
 
 ## Planned architecture
@@ -127,7 +103,7 @@ Qt WebEngine is Chromium-based, but it is **not full Google Chrome**. Extension 
 - [x] Basic browser window and web page rendering
 - [x] Address bar, back/forward, and reload
 - [x] Hidden tab strip and keyboard tab controls
-- [x] PyInstaller build and desktop-menu installer
+- [x] Cloud Linux build workflow and prebuilt-bundle installer (pending first successful release)
 - [ ] Custom keyboard-driven tab switcher
 - [ ] Settings UI and profile controls
 - [ ] Investigate Qt WebEngine extension APIs
