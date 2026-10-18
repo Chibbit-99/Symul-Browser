@@ -166,6 +166,7 @@ class SymulBrowser(QMainWindow):
         self.profile.setPersistentStoragePath(str(DATA_DIR / "web-data"))
         self.profile.setCachePath(str(DATA_DIR / "cache"))
         self.profile.downloadRequested.connect(self.handle_download)
+        self.local_extensions = self.load_local_extensions()
 
         root = QWidget(self)
         root.setObjectName("browserRoot")
@@ -243,6 +244,62 @@ class SymulBrowser(QMainWindow):
         self._build_actions()
         self.new_tab()
         self.apply_shortcuts()
+
+    def load_local_extensions(self):
+        """Load basic unpacked extensions that declare manifest content scripts."""
+        loaded = []
+        extension_root = APP_DIR / "extensions"
+        if not extension_root.is_dir():
+            print(f"No extensions directory found: {extension_root}")
+            return loaded
+
+        injection_points = {
+            "document_start": QWebEngineScript.InjectionPoint.DocumentCreation,
+            "document_end": QWebEngineScript.InjectionPoint.DocumentReady,
+            "document_idle": QWebEngineScript.InjectionPoint.Deferred,
+        }
+
+        for manifest_path in sorted(extension_root.glob("*/manifest.json")):
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                extension_name = manifest.get("name", manifest_path.parent.name)
+                scripts = []
+
+                for content_script in manifest.get("content_scripts", []):
+                    injection_point = injection_points.get(
+                        content_script.get("run_at", "document_idle")
+                    )
+                    if injection_point is None:
+                        print(f"Unsupported run_at value in {manifest_path}")
+                        continue
+
+                    matches = content_script.get("matches", [])
+                    for relative_path in content_script.get("js", []):
+                        script_path = (manifest_path.parent / relative_path).resolve()
+                        if manifest_path.parent.resolve() not in script_path.parents:
+                            print(f"Rejected extension script outside its folder: {script_path}")
+                            continue
+                        if not script_path.is_file():
+                            print(f"Extension script not found: {script_path}")
+                            continue
+
+                        scripts.append({
+                            "file": relative_path,
+                            "source": script_path.read_text(encoding="utf-8"),
+                            "matches": matches,
+                            "injection_point": injection_point,
+                            "all_frames": bool(content_script.get("all_frames", False)),
+                        })
+
+                if scripts:
+                    loaded.append({"name": extension_name, "scripts": scripts})
+                    print(f"Loaded extension content scripts: {extension_name}")
+                else:
+                    print(f"No supported content scripts found in {manifest_path}")
+            except (OSError, ValueError, TypeError) as error:
+                print(f"Could not load extension manifest {manifest_path}: {error}")
+
+        return loaded
 
     def button(self, text, tooltip, callback):
         button = QPushButton(text, self)
