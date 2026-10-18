@@ -20,38 +20,120 @@
 
 Because the tab strip is hidden, use the keyboard shortcuts to navigate between tabs.
 
-## Quick install (Linux x86_64)
+## Install on Linux x86_64
 
-GitHub Actions builds the application and uploads the finished bundle to a GitHub Release. The installer downloads that prebuilt bundle; it does **not** install Python, PySide6, or PyInstaller or compile the app on your computer.
+You can either download the prebuilt archive yourself and install it with the script below, or use the automatic installer.
 
-Copy and paste this command to install without cloning the repository:
+### Option 1: Download manually, then install
+
+**[Download Symul Browser for Linux (x86_64) — approximately 309 MB](https://github.com/Chibbit-99/Symul-Browser/releases/download/main/symul-browser-linux-x86_64.tar.gz)**
+
+The archive is named `symul-browser-linux-x86_64.tar.gz`. Download it using your browser, then copy and paste the following into a terminal. The script looks for the archive in the current directory or your `~/Downloads` folder, validates it, and installs the bundled application. You do not need Python, pip, PySide6, PyInstaller, curl, or a compiler.
+
+```bash
+set -Eeuo pipefail
+
+ARCHIVE="$PWD/symul-browser-linux-x86_64.tar.gz"
+if [[ ! -f "$ARCHIVE" && -f "$HOME/Downloads/symul-browser-linux-x86_64.tar.gz" ]]; then
+    ARCHIVE="$HOME/Downloads/symul-browser-linux-x86_64.tar.gz"
+fi
+
+if [[ ! -f "$ARCHIVE" ]]; then
+    echo "Could not find symul-browser-linux-x86_64.tar.gz." >&2
+    echo "Put the downloaded archive in ~/Downloads or run this from its folder." >&2
+    exit 1
+fi
+
+case "$(uname -m)" in
+    x86_64|amd64) ;;
+    *)
+        echo "This prebuilt bundle supports Linux x86_64 only." >&2
+        exit 1
+        ;;
+esac
+
+command -v tar >/dev/null 2>&1 || {
+    echo "The 'tar' command is required." >&2
+    exit 1
+}
+
+echo "==> Checking downloaded archive"
+tar -tzf "$ARCHIVE" >/dev/null
+
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf -- "$TMP_DIR"' EXIT
+echo "==> Extracting application"
+tar -xzf "$ARCHIVE" -C "$TMP_DIR"
+
+SOURCE_DIR="$TMP_DIR/Symul-Browser"
+if [[ ! -x "$SOURCE_DIR/Symul-Browser" ]]; then
+    echo "The archive does not contain the expected Symul-Browser executable." >&2
+    exit 1
+fi
+
+INSTALL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/symul-browser"
+DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+STAGING_DIR="$INSTALL_DIR/app.new"
+
+echo "==> Installing to $INSTALL_DIR"
+mkdir -p "$INSTALL_DIR" "$DESKTOP_DIR"
+rm -rf -- "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+cp -a "$SOURCE_DIR/." "$STAGING_DIR/"
+chmod +x "$STAGING_DIR/Symul-Browser"
+rm -rf -- "$INSTALL_DIR/app"
+mv -- "$STAGING_DIR" "$INSTALL_DIR/app"
+
+cat > "$DESKTOP_DIR/symul-browser.desktop" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Symul Browser
+GenericName=Web Browser
+Comment=Experimental keyboard-first Qt WebEngine browser
+Exec="$INSTALL_DIR/app/Symul-Browser" %U
+Icon=web-browser
+Terminal=false
+Categories=Network;WebBrowser;
+StartupNotify=true
+EOF
+chmod 644 "$DESKTOP_DIR/symul-browser.desktop"
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
+fi
+if command -v kbuildsycoca6 >/dev/null 2>&1; then
+    kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+fi
+
+echo
+echo "Symul Browser installed successfully."
+echo "Launch it from the KDE application menu."
+echo "Executable: $INSTALL_DIR/app/Symul-Browser"
+```
+
+### Option 2: Automatic installer
+
+If you prefer the terminal to download the archive for you, copy and paste:
 
 ```bash
 sudo apt update
 sudo apt install -y curl tar
-curl -fsSL 'https://raw.githubusercontent.com/Chibbit-99/Symul-Browser/main/install.sh?cache=1' | bash
+curl -fsSL 'https://raw.githubusercontent.com/Chibbit-99/Symul-Browser/main/install.sh' | bash
 ```
 
-The installer uses **curl only**—it does not use `aria2`. It downloads over HTTP/1.1 and retries transient failures automatically. Before installing, it checks that the downloaded archive is valid, so a truncated or corrupt download is rejected. The approximately 309 MB bundle is followed by spinner indicators while extracting and copying the application files.
+This uses curl (not aria2), retries interrupted downloads, and validates the archive before installing. If your connection repeatedly drops during the large download, use Option 1 to download the archive in your browser instead.
 
-### When is the downloadable build updated?
+### Where to get other versions
 
-- **Push to `main`:** GitHub Actions builds the app and updates the rolling `main` release.
-- **Publish a GitHub Release:** GitHub Actions builds the release tag and attaches the archive to that versioned release.
+The manual download above follows the rolling `main` build. For a specific published version, open the [GitHub Releases page](https://github.com/Chibbit-99/Symul-Browser/releases) and download `symul-browser-linux-x86_64.tar.gz` from the release you want.
 
-The installer downloads the rolling `main` build. To install a specific published version instead, download `symul-browser-linux-x86_64.tar.gz` from that version's GitHub Release and extract it manually.
+### What gets installed?
 
-### What the installer does
+- Application files: `~/.local/share/symul-browser/app/` (or the equivalent under `$XDG_DATA_HOME`)
+- KDE application menu entry: `~/.local/share/applications/symul-browser.desktop` (or the equivalent under `$XDG_DATA_HOME`)
 
-1. Checks that the machine is Linux x86_64 and that `curl` and `tar` are available.
-2. Downloads `symul-browser-linux-x86_64.tar.gz` from the project's rolling `main` GitHub Release with curl retries and visible progress.
-3. Verifies the downloaded archive before extracting it.
-4. Installs the prebuilt application to `~/.local/share/symul-browser/app/` (or the equivalent under `$XDG_DATA_HOME`).
-5. Creates `~/.local/share/applications/symul-browser.desktop`, so **Symul Browser** appears in the KDE application menu.
-
-No Python, pip, virtual environment, or PyInstaller build is needed on the target computer. The bundle is built on Ubuntu 24.04 and may still require compatible system libraries on the Linux distribution where it runs.
-
-**If installation says the build cannot be downloaded**, the first successful GitHub Actions build must finish before the rolling `main` release exists. Check the [Actions page](https://github.com/Chibbit-99/Symul-Browser/actions).
+The prebuilt bundle is built on Ubuntu 24.04 and may still require compatible system libraries on the Linux distribution where it runs.
 
 ## Uninstall
 
@@ -107,7 +189,7 @@ Qt WebEngine is Chromium-based, but it is **not full Google Chrome**. Extension 
 - [x] Basic browser window and web page rendering
 - [x] Address bar, back/forward, and reload
 - [x] Hidden tab strip and keyboard tab controls
-- [x] Cloud Linux build workflow and prebuilt-bundle installer (first successful build still needs verification)
+- [x] Cloud Linux build workflow and prebuilt-bundle installer
 - [ ] Custom keyboard-driven tab switcher
 - [ ] Settings UI and profile controls
 - [ ] Investigate Qt WebEngine extension APIs
