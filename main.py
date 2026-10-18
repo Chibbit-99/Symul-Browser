@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
-from PySide6.QtCore import QTimer, QUrl, Qt
+from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
@@ -139,22 +139,6 @@ class SymulBrowser(QMainWindow):
         self.profile.setCachePath(str(DATA_DIR / "cache"))
         self.profile.downloadRequested.connect(self.handle_download)
 
-        # Load the repository's test extension when the Qt WebEngine version supports it.
-        self.extension_manager = None
-        self._extension_ready = False
-        self._startup_fallback = QTimer(self)
-        self._startup_fallback.setSingleShot(True)
-        self._startup_fallback.timeout.connect(self.open_home_after_extension_startup)
-        if hasattr(self.profile, "extensionManager"):
-            self.extension_manager = self.profile.extensionManager()
-            self.extension_manager.loadFinished.connect(self.on_test_extension_loaded)
-            test_extension = APP_DIR / "extensions" / "test"
-            if (test_extension / "manifest.json").is_file():
-                self.extension_manager.loadExtension(str(test_extension))
-                self._startup_fallback.start(3000)
-            else:
-                print(f"Symul extension test folder not found: {test_extension}")
-
         root = QWidget(self)
         root.setObjectName("browserRoot")
         root_layout = QVBoxLayout(root)
@@ -229,28 +213,8 @@ class SymulBrowser(QMainWindow):
         self.statusBar().showMessage("Ready")
 
         self._build_actions()
-        self.new_tab("about:blank")
+        self.new_tab()
         self.apply_shortcuts()
-        if self.extension_manager is None:
-            print("Symul extensions require Qt WebEngine 6.10 or newer.")
-            self.open_home_after_extension_startup()
-
-    def on_test_extension_loaded(self, extension):
-        error = extension.error()
-        if error:
-            print(f"Symul test extension failed to load: {error}")
-            self.open_home_after_extension_startup()
-            return
-        self.extension_manager.setExtensionEnabled(extension, True)
-        self._extension_ready = True
-        print(f"Enabled Symul test extension: {extension.name()}")
-        self.open_home_after_extension_startup()
-
-    def open_home_after_extension_startup(self):
-        self._startup_fallback.stop()
-        tab = self.current_tab()
-        if tab and tab.view.url().toString() == "about:blank":
-            tab.view.setUrl(QUrl(HOME_URL))
 
     def button(self, text, tooltip, callback):
         button = QPushButton(text, self)
