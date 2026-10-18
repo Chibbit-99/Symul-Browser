@@ -2,11 +2,12 @@
 """Symul Browser — a compact, keyboard-first desktop browser."""
 
 import json
+import os
 import sys
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
-from PySide6.QtCore import QStandardPaths, QUrl, Qt, QTimer
+from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
@@ -21,7 +22,7 @@ APP_NAME = "Symul Browser"
 APP_DIR = Path(__file__).resolve().parent
 ICON_PATH = APP_DIR / "icon.png"
 HOME_URL = "https://duckduckgo.com/"
-DATA_DIR = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
+DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))) / "symul-browser"
 BOOKMARKS_FILE = DATA_DIR / "bookmarks.json"
 
 STYLE = """
@@ -463,7 +464,7 @@ class SymulBrowser(QMainWindow):
     def show_find_bar(self):
         self.find_bar.show()
         self.find_bar.raise_()
-        self.find_bar.setGeometry(0, 0, min(520, self.centralWidget().width()), 52)
+        self.find_bar.setGeometry(max(0, self.centralWidget().width() - 452), 64, min(440, self.centralWidget().width()), 52)
         self.find_input.setFocus()
         self.find_input.selectAll()
 
