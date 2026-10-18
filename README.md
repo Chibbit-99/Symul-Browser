@@ -41,7 +41,7 @@ echo "Installing application files..."
 cp -a "$S/." "$I/app.new/"
 chmod +x "$I/app.new/Symul-Browser"
 rm -rf "$I/app"; mv "$I/app.new" "$I/app"
-printf '[Desktop Entry]\\nVersion=1.0\\nType=Application\\nName=Symul Browser\\nGenericName=Web Browser\\nComment=Experimental keyboard-first Qt WebEngine browser\\nExec="%s" %%U\\nIcon=web-browser\\nTerminal=false\\nCategories=Network;WebBrowser;\\nStartupNotify=true\\n' "$I/app/Symul-Browser" > "$D/symul-browser.desktop"
+printf '[Desktop Entry]\nVersion=1.0\nType=Application\nName=Symul Browser\nGenericName=Web Browser\nComment=Experimental keyboard-first Qt WebEngine browser\nExec="%s" %%U\nIcon=web-browser\nTerminal=false\nCategories=Network;WebBrowser;\nStartupNotify=true\n' "$I/app/Symul-Browser" > "$D/symul-browser.desktop"
 chmod 644 "$D/symul-browser.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$D" >/dev/null 2>&1 || true
 command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
