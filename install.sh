@@ -52,10 +52,11 @@ for command_name in curl tar; do
 done
 
 echo "==> Downloading the prebuilt Symul Browser Linux bundle (~309 MB)"
-echo "Using curl over HTTP/1.1 with retries (aria2 is not used)."
+echo "Using curl over HTTP/1.1 with retries and resume support (aria2 is not used)."
 if ! curl --http1.1 \
     --fail \
     --location \
+    --continue-at - \
     --retry 10 \
     --retry-all-errors \
     --retry-delay 3 \
