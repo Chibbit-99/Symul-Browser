@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browser UI</title>
+<style>
+  :root {
+    --chrome: #dee1e6;
+    --toolbar: #ffffff;
+    --tab-active: #ffffff;
+    --tab-hover: #cfd3da;
+    --field: #f1f3f4;
+    --field-hover: #e8eaed;
+    --text: #202124;
+    --text-muted: #5f6368;
+    --border: #dadce0;
+    --accent: #1a73e8;
+    --page: #ffffff;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --chrome: #1f1f23;
+      --toolbar: #35363a;
+      --tab-active: #35363a;
+      --tab-hover: #2b2c30;
+      --field: #202124;
+      --field-hover: #2b2c30;
+      --text: #e8eaed;
+      --text-muted: #9aa0a6;
+      --border: #3c4043;
+      --accent: #8ab4f8;
+      --page: #202124;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--chrome);
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--text);
+  }
+
+  /* Window frame: shown as a desktop window on a larger screen */
+  .window {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--chrome);
+    overflow: hidden;
+  }
+  @media (min-width: 900px) {
+    body { display: block; }
+    .window {
+      width: 100%;
+      height: 100vh;
+    }
+  }
+
+  /* Tab strip */
+  .tabstrip {
+    display: flex;
+    align-items: flex-end;
+    padding: 8px 8px 0;
+    gap: 2px;
+    min-height: 40px;
+    overflow: hidden;
+  }
+  .tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 220px;
+    min-width: 90px;
+    max-width: 240px;
+    height: 32px;
+    padding: 0 8px 0 12px;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    user-select: none;
+    flex-shrink: 1;
+  }
+  .tab:hover { background: var(--tab-hover); }
+  .tab.active { background: var(--tab-active); }
+  .tab.active::before, .tab.active::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    width: 10px;
+    height: 10px;
+  }
+  .tab.active::before {
+    left: -10px;
+    background: radial-gradient(circle at 0 0, transparent 10px, var(--tab-active) 10.5px);
+  }
+  .tab.active::after {
+    right: -10px;
+    background: radial-gradient(circle at 100% 0, transparent 10px, var(--tab-active) 10.5px);
+  }
+  .favicon {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .tab-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tab-close {
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .tab-close:hover { background: var(--border); color: var(--text); }
+
+  .new-tab, .tab-search {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    color: var(--text);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    margin: 0 4px 2px;
+    flex-shrink: 0;
+  }
+  .new-tab:hover, .tab-search:hover { background: var(--tab-hover); }
+
+  .window-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding-bottom: 2px;
+  }
+  .wc {
+    width: 40px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .wc:hover { background: var(--tab-hover); }
+  .wc.close:hover { background: #c42b1c; color: #fff; }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: var(--toolbar);
+    border-bottom: 1px solid var(--border);
+  }
+  .btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    color: var(--text);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .btn:hover:not(:disabled) { background: var(--field-hover); }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+  .btn.spin svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .omnibox {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    height: 34px;
+    background: var(--field);
+    border-radius: 17px;
+    padding: 0 6px 0 12px;
+    gap: 8px;
+    min-width: 0;
+    border: 1px solid transparent;
+  }
+  .omnibox:hover { background: var(--field-hover); }
+  .omnibox:focus-within {
+    background: var(--toolbar);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .omnibox svg { flex-shrink: 0; color: var(--text-muted); }
+  .omnibox input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .omnibox .btn { width: 26px; height: 26px; }
+  .omnibox .btn.star.on { color: #f9ab00; }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #7b61ff;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    display: grid;
+    place-items: center;
+    margin-left: 4px;
+    cursor: pointer;
+  }
+
+  /* Bookmarks bar */
+  .bookmarks {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    background: var(--toolbar);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+    font-size: 13px;
+  }
+  .bookmark {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--text);
+    border: none;
+    background: transparent;
+    font: inherit;
+  }
+  .bookmark:hover { background: var(--field-hover); }
+  .bookmark .favicon { width: 14px; height: 14px; font-size: 9px; }
+  .bookmark-folder { color: var(--text-muted); }
+
+  /* Tab menu popup */
+  .tab-menu-wrap { position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 2px; }
+  .tab-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 600; display: grid; place-items: center; }
+  .tab-popup {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 320px;
+    max-height: 420px;
+    display: flex;
+    flex-direction: column;
+    background: var(--toolbar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    padding: 6px;
+    z-index: 100;
+  }
+  .tab-popup[hidden] { display: none; }
+  .popup-header { font-size: 12px; color: var(--text-muted); padding: 6px 8px; }
+  .tab-popup .tabs { flex-direction: column; align-items: stretch; overflow-y: auto; overflow-x: hidden; gap: 2px; }
+  .tab-popup .tab { width: 100%; max-width: none; min-width: 0; height: auto; padding: 8px; border-radius: 6px; }
+  .tab-popup .tab::before, .tab-popup .tab::after { display: none; }
+  .tab-popup .tab.active { background: var(--field); }
+  .popup-action { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 8px; border: none; background: transparent; color: var(--text); font: inherit; font-size: 13px; border-radius: 6px; cursor: pointer; }
+  .popup-action:hover { background: var(--field-hover); }
+
+  /* Page content */
+  .content {
+    flex: 1;
+    position: relative;
+    background: var(--page);
+    overflow: auto;
+  }
+  .progress {
+    position: absolute;
+    top: 0; left: 0;
+    height: 2px;
+    width: 0;
+    background: var(--accent);
+    transition: width 0.4s ease, opacity 0.3s;
+    opacity: 0;
+  }
+  .progress.run { opacity: 1; width: 80%; }
+  .progress.done { width: 100%; opacity: 0; }
+
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 32px;
+  }
+  .page h1 { font-size: 28px; font-weight: 500; margin: 0 0 6px; }
+  .page .url { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; word-break: break-all; }
+  .page p { line-height: 1.6; color: var(--text-muted); }
+  .blank {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .blank .big { font-size: 22px; color: var(--text); margin-bottom: 6px; }
+
+  .placeholder-block {
+    margin-top: 24px;
+    height: 120px;
+    border-radius: 8px;
+    background: var(--field);
+  }
+  .placeholder-block.short { height: 60px; margin-top: 12px; width: 70%; }
+
+  /* Status bubble */
+  .status {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    padding: 4px 8px;
+    background: var(--toolbar);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: none;
+    pointer-events: none;
+  }
+  .status.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="window" id="window">
+
+  <div class="toolbar">
+    <button class="btn" id="back" title="Back (Alt+Left)" aria-label="Back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </button>
+    <button class="btn" id="forward" title="Forward (Alt+Right)" aria-label="Forward">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </button>
+    <button class="btn" id="reload" title="Reload (Ctrl+R)" aria-label="Reload">
+      <svg id="reloadIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+    </button>
+    <button class="btn" id="home" title="Home" aria-label="Home">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+    </button>
+
+    <div class="omnibox">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="secIcon"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <input id="address" type="text" spellcheck="false" autocomplete="off" placeholder="Search or enter address">
+      <button class="btn star" id="star" title="Bookmark this tab" aria-label="Bookmark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" id="starIcon"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
+    </div>
+
+    <div class="tab-menu-wrap">
+      <button class="btn" id="tabMenuBtn" title="All tabs" aria-label="All tabs">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2"/></svg>
+      </button>
+      <span class="tab-count" id="tabCount">1</span>
+      <div class="tab-popup" id="tabPopup" hidden>
+        <div class="popup-header">Tabs</div>
+        <div class="tabs" id="tabs"></div>
+        <button class="popup-action" id="newTab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New tab
+        </button>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button class="btn" title="Extensions" aria-label="Extensions">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 7h-3V4a2 2 0 0 0-4 0v3H9V4a2 2 0 0 0-4 0v3H2v4h2a2 2 0 0 1 0 4H2v4h5v-2a2 2 0 0 1 4 0v2h4v-2a2 2 0 0 1 4 0v2h3v-5h-2a2 2 0 0 1 0-4h2z"/></svg>
+      </button>
+      <button class="btn" title="Downloads" aria-label="Downloads">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <div class="avatar" title="Profile">U</div>
+      <button class="btn" title="Menu" aria-label="Menu">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="bookmarks" id="bookmarks">
+    <button class="bookmark"><span class="favicon" style="background:#4285f4">G</span>Gmail</button>
+    <button class="bookmark"><span class="favicon" style="background:#d93025">Y</span>YouTube</button>
+    <button class="bookmark"><span class="favicon" style="background:#f48024">W</span>Wikipedia</button>
+    <button class="bookmark"><span class="favicon" style="background:#34a853">M</span>Maps</button>
+    <button class="bookmark"><span class="favicon" style="background:#5f6368">N</span>News</button>
+    <button class="bookmark bookmark-folder">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Work
+    </button>
+    <button class="bookmark bookmark-folder">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Reading
+    </button>
+  </div>
+
+  <div class="content" id="content">
+    <div class="progress" id="progress"></div>
+    <div id="view"></div>
+    <div class="status" id="status"></div>
+  </div>
+
+</div>
+
+<script>
+  const FAVICON_COLORS = ["#4285f4", "#d93025", "#f48024", "#34a853", "#5f6368", "#7b61ff", "#10a37f", "#1da1f2"];
+
+  let tabs = [];
+  let activeId = null;
+  let nextId = 1;
+
+  const $ = (id) => document.getElementById(id);
+
+  function hostOf(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
+  }
+
+  function normalize(input) {
+    const q = input.trim();
+    if (!q) return null;
+    const looksLikeUrl = !/\s/.test(q) && /\.[a-z]{2,}(\/|$)/i.test(q);
+    if (looksLikeUrl) return /^https?:\/\//i.test(q) ? q : "https://" + q;
+    return "https://www.google.com/search?q=" + encodeURIComponent(q);
+  }
+
+  function createTab(url = "") {
+    const tab = {
+      id: nextId++,
+      url,
+      title: url ? hostOf(url) : "New Tab",
+      history: url ? [url] : [],
+      index: url ? 0 : -1,
+      loading: false,
+      color: FAVICON_COLORS[(nextId - 2) % FAVICON_COLORS.length]
+    };
+    tabs.push(tab);
+    activate(tab.id);
+    if (!url) $("address").focus();
+    return tab;
+  }
+
+  function getTab(id) { return tabs.find(t => t.id === id); }
+  function current() { return getTab(activeId); }
+
+  function activate(id) {
+    activeId = id;
+    renderTabs();
+    renderView();
+    renderToolbar();
+  }
+
+  function closeTab(id) {
+    const idx = tabs.findIndex(t => t.id === id);
+    if (idx === -1) return;
+    tabs.splice(idx, 1);
+    if (tabs.length === 0) {
+      createTab();
+      return;
+    }
+    if (activeId === id) {
+      const next = tabs[Math.min(idx, tabs.length - 1)];
+      activate(next.id);
+    } else {
+      renderTabs();
+    }
+  }
+
+  function renderTabs() {
+    $("tabCount").textContent = tabs.length;
+    const wrap = $("tabs");
+    wrap.innerHTML = "";
+    tabs.forEach(t => {
+      const el = document.createElement("div");
+      el.className = "tab" + (t.id === activeId ? " active" : "");
+      el.title = t.title;
+
+      const fav = document.createElement("span");
+      fav.className = "favicon";
+      fav.style.background = t.url ? t.color : "transparent";
+      fav.style.border = t.url ? "none" : "1px solid var(--border)";
+      fav.textContent = t.url ? (t.title[0] || "").toUpperCase() : "";
+
+      const title = document.createElement("span");
+      title.className = "tab-title";
+      title.textContent = t.loading ? "Loading…" : t.title;
+
+      const close = document.createElement("button");
+      close.className = "tab-close";
+      close.setAttribute("aria-label", "Close tab");
+      close.innerHTML = '<svg width="8" height="8" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.4"><line x1="0" y1="0" x2="10" y2="10"/><line x1="10" y1="0" x2="0" y2="10"/></svg>';
+      close.addEventListener("click", (e) => { e.stopPropagation(); closeTab(t.id); });
+
+      el.append(fav, title, close);
+      el.addEventListener("click", () => { activate(t.id); closeTabMenu(); });
+      wrap.appendChild(el);
+    });
+  }
+
+  function renderToolbar() {
+    const t = current();
+    const addr = $("address");
+    if (document.activeElement !== addr) {
+      addr.value = t && t.url ? t.url : "";
+    }
+    $("back").disabled = !t || t.index <= 0;
+    $("forward").disabled = !t || t.index >= t.history.length - 1;
+    $("star").querySelector("svg").setAttribute("fill", "none");
+    $("star").classList.toggle("on", !!(t && t.bookmarked));
+    if (t && t.bookmarked) $("starIcon").setAttribute("fill", "currentColor");
+    $("secIcon").style.display = t && t.url ? "block" : "none";
+  }
+
+  function renderView() {
+    const t = current();
+    const view = $("view");
+    if (!t) return;
+    if (!t.url) {
+      view.innerHTML = '<div class="blank" style="height:100%"><div><div class="big">New Tab</div><div>Type a search or web address in the bar above</div></div></div>';
+      return;
+    }
+    const host = hostOf(t.url);
+    view.innerHTML = `
+      <div class="page">
+        <h1>${escapeHtml(t.title)}</h1>
+        <div class="url">${escapeHtml(t.url)}</div>
+        <p>This is a placeholder for the page content. In a real browser, the rendered site would appear here.</p>
+        <div class="placeholder-block"></div>
+        <div class="placeholder-block short"></div>
+        <div class="placeholder-block short"></div>
+      </div>`;
+    $("content").scrollTop = 0;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function navigate(url) {
+    const t = current();
+    if (!t) return;
+    t.history = t.history.slice(0, t.index + 1);
+    t.history.push(url);
+    t.index = t.history.length - 1;
+    load(t, url);
+  }
+
+  function load(t, url) {
+    t.url = url;
+    t.loading = true;
+    t.title = hostOf(url) || url;
+    renderTabs();
+    renderToolbar();
+    const prog = $("progress");
+    prog.classList.remove("done");
+    prog.classList.add("run");
+    setTimeout(() => {
+      t.loading = false;
+      prog.classList.remove("run");
+      prog.classList.add("done");
+      renderTabs();
+      if (t.id === activeId) renderView();
+    }, 700);
+    if (t.id === activeId) renderView();
+  }
+
+  function go(delta) {
+    const t = current();
+    if (!t) return;
+    const next = t.index + delta;
+    if (next < 0 || next >= t.history.length) return;
+    t.index = next;
+    load(t, t.history[next]);
+    renderToolbar();
+  }
+
+  // Events
+  function closeTabMenu() { $("tabPopup").hidden = true; }
+
+  $("tabMenuBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    $("tabPopup").hidden = !$("tabPopup").hidden;
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".tab-menu-wrap")) closeTabMenu();
+  });
+  $("newTab").addEventListener("click", () => { createTab(); closeTabMenu(); });
+
+  $("address").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const url = normalize(e.target.value);
+      if (url) {
+        const t = current();
+        if (t && !t.url) { t.history = []; t.index = -1; }
+        navigate(url);
+        e.target.blur();
+      }
+    }
+    if (e.key === "Escape") {
+      e.target.blur();
+      renderToolbar();
+    }
+  });
+
+  $("address").addEventListener("focus", (e) => e.target.select());
+  $("address").addEventListener("blur", () => renderToolbar());
+
+  $("back").addEventListener("click", () => go(-1));
+  $("forward").addEventListener("click", () => go(1));
+  $("reload").addEventListener("click", () => {
+    const t = current();
+    if (!t || !t.url) return;
+    $("reloadIcon").parentElement.classList.add("spin");
+    load(t, t.url);
+    setTimeout(() => $("reloadIcon").parentElement.classList.remove("spin"), 800);
+  });
+  $("home").addEventListener("click", () => {
+    const t = current();
+    if (!t) return;
+    t.history = [];
+    t.index = -1;
+    t.url = "";
+    t.title = "New Tab";
+    t.bookmarked = false;
+    renderTabs();
+    renderToolbar();
+    renderView();
+  });
+
+  $("star").addEventListener("click", () => {
+    const t = current();
+    if (!t || !t.url) return;
+    t.bookmarked = !t.bookmarked;
+    renderToolbar();
+  });
+
+  document.querySelectorAll(".bookmark:not(.bookmark-folder)").forEach(b => {
+    b.addEventListener("click", () => {
+      const label = b.textContent.trim().toLowerCase();
+      const map = { gmail: "gmail.com", youtube: "youtube.com", wikipedia: "wikipedia.org", maps: "maps.google.com", news: "news.google.com" };
+      const t = current();
+      if (!t) return;
+      if (t.url === "") { t.history = []; t.index = -1; }
+      navigate("https://" + map[label]);
+    });
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === "t") { e.preventDefault(); createTab(); }
+    if (mod && e.key.toLowerCase() === "w") { e.preventDefault(); if (activeId) closeTab(activeId); }
+    if (mod && e.key.toLowerCase() === "l") { e.preventDefault(); $("address").focus(); }
+    if (mod && e.key.toLowerCase() === "r") { e.preventDefault(); $("reload").click(); }
+    if (e.altKey && e.key === "ArrowLeft") go(-1);
+    if (e.altKey && e.key === "ArrowRight") go(1);
+  });
+
+  // Start with one empty tab
+  createTab();
+</script>
+
+</body>
+</html>
