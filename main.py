@@ -273,7 +273,6 @@ class SymulBrowser(QMainWindow):
 
         self.tabs = _TabStack(root)
         self.tabs.browser = self
-        self.tab_bar.currentChanged.connect(self.tabs.setCurrentIndex)
         root_layout.addWidget(self.tabs, 1)
         self.setCentralWidget(root)
 
@@ -476,7 +475,6 @@ class SymulBrowser(QMainWindow):
         self.update_window_title()
         self.refresh_buttons()
         self.tabs_button.setText("▣ " + str(self.tabs.count()))
-        self.sync_chrome()
         self.bookmark_button.setText("★" if self.is_bookmarked(tab.view.url().toString()) else "☆")
         self.progress.setVisible(False)
         self.sync_chrome()
