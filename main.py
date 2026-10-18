@@ -8,8 +8,7 @@ from pathlib import Path
 from urllib.parse import quote, urlparse
 
 from PySide6.QtCore import QUrl, Qt
-from PySide6.QtGui import QAction, QIcon, QKeySequence
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton,
@@ -32,24 +31,24 @@ QWidget { color: #e6edef; font-size: 10pt; }
 QWidget#chrome { background: #172226; border-bottom: 1px solid #29383d; }
 QPushButton {
   background: transparent; color: #c6d2d5; border: 0; border-radius: 9px;
-  min-width: 34px; min-height: 34px; padding: 0 7px; font-size: 15px;
+  min-width: 38px; min-height: 38px; padding: 0 4px; font-size: 19px;
 }
 QPushButton:hover { background: #2a393e; color: #ffffff; }
 QPushButton:pressed { background: #35494e; }
 QPushButton:disabled { color: #526166; }
-QPushButton#brandButton { color: #f0a27e; font-weight: 700; font-size: 17px; min-width: 38px; }
-QPushButton#menuButton { font-size: 20px; }
+QPushButton#brandButton { color: #77aaff; font-weight: 800; font-size: 20px; min-width: 36px; }
+QPushButton#menuButton { font-size: 23px; min-width: 36px; }
 QLineEdit#omnibox {
   background: #0d1518; color: #edf5f6; border: 1px solid #293a40;
   border-radius: 18px; padding: 0 13px; min-height: 38px;
-  selection-background-color: #bd6846;
+  selection-background-color: #3978d4;
 }
-QLineEdit#omnibox:focus { background: #0a1215; border: 1px solid #bd795a; }
-QLabel#security { color: #9bb1b7; min-width: 22px; font-size: 13px; }
-QLabel#brandWord { color: #f0a27e; font-size: 12pt; font-weight: 700; padding-left: 2px; }
+QLineEdit#omnibox:focus { background: #0a1215; border: 1px solid #5b9bff; }
+QLabel#security { color: #9bb1b7; min-width: 24px; font-size: 16px; }
+QLabel#brandWord { color: #77aaff; font-size: 12pt; font-weight: 700; padding-left: 2px; }
 QLabel#pageHint { color: #9bb1b7; padding: 2px 8px; }
 QProgressBar { background: #1a292e; border: 0; max-height: 2px; }
-QProgressBar::chunk { background: #d47b56; }
+QProgressBar::chunk { background: #4f8fff; }
 QMenu {
   background: #1a272b; color: #e6edef; border: 1px solid #35474d;
   padding: 6px; border-radius: 10px;
@@ -76,7 +75,11 @@ class BrowserTab(QWidget):
     def __init__(self, profile, browser, parent=None):
         super().__init__(parent)
         self.browser = browser
+        tab_layout = QVBoxLayout(self)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_layout.setSpacing(0)
         self.view = QWebEngineView(self)
+        tab_layout.addWidget(self.view, 1)
         self.page = BrowserPage(profile, browser, self.view)
         self.view.setPage(self.page)
         self.view.urlChanged.connect(self.update_address)
@@ -145,12 +148,12 @@ class SymulBrowser(QMainWindow):
         chrome = QWidget(root)
         chrome.setObjectName("chrome")
         chrome_layout = QVBoxLayout(chrome)
-        chrome_layout.setContentsMargins(10, 8, 10, 8)
-        chrome_layout.setSpacing(5)
+        chrome_layout.setContentsMargins(8, 6, 8, 6)
+        chrome_layout.setSpacing(3)
 
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(4)
+        row.setSpacing(2)
         self.brand = QPushButton("s", chrome)
         self.brand.setObjectName("brandButton")
         self.brand.setToolTip("Symul Browser — home")
