@@ -52,37 +52,23 @@ for command_name in curl tar; do
 done
 
 echo "==> Downloading the prebuilt Symul Browser Linux bundle (~309 MB)"
-if command -v aria2c >/dev/null 2>&1; then
-    # GitHub's release asset endpoint has returned inconsistent Content-Range
-    # totals for parallel requests. Use one connection to avoid ranged chunks.
-    echo "Using aria2 with a single connection to avoid GitHub range-response errors."
-    if ! aria2c \
-        --max-connection-per-server=1 \
-        --split=1 \
-        --max-tries=10 \
-        --retry-wait=3 \
-        --continue=true \
-        --summary-interval=1 \
-        --console-log-level=warn \
-        --download-result=hide \
-        --dir="$TMP_DIR" \
-        --out="$ASSET" \
-        "$RELEASE_URL"; then
-        echo >&2
-        echo "Could not download the latest main-branch build." >&2
-        echo "Check that the GitHub Actions build succeeded:" >&2
-        echo "https://github.com/$REPO/actions" >&2
-        exit 1
-    fi
-else
-    echo "Using curl with HTTP/1.1 and automatic retries."
-    if ! curl --http1.1 --fail --location --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 30 --show-error --progress-bar "$RELEASE_URL" -o "$TMP_DIR/$ASSET"; then
-        echo >&2
-        echo "Could not download the latest main-branch build." >&2
-        echo "Check that the GitHub Actions build succeeded:" >&2
-        echo "https://github.com/$REPO/actions" >&2
-        exit 1
-    fi
+echo "Using curl over HTTP/1.1 with retries (aria2 is not used)."
+if ! curl --http1.1 \
+    --fail \
+    --location \
+    --retry 10 \
+    --retry-all-errors \
+    --retry-delay 3 \
+    --connect-timeout 30 \
+    --show-error \
+    --progress-bar \
+    "$RELEASE_URL" \
+    -o "$TMP_DIR/$ASSET"; then
+    echo >&2
+    echo "Could not download the latest main-branch build." >&2
+    echo "Check that the GitHub Actions build succeeded:" >&2
+    echo "https://github.com/$REPO/actions" >&2
+    exit 1
 fi
 
 # Reject truncated/corrupt downloads before replacing any installed files.
