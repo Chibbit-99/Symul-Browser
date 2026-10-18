@@ -28,17 +28,20 @@ set -e
 A="$HOME/Downloads/symul-browser-linux-x86_64.tar.gz"
 test -f "$A" || { echo "Archive not found: $A"; exit 1; }
 case "$(uname -m)" in x86_64|amd64) ;; *) echo "Linux x86_64 is required."; exit 1 ;; esac
+echo "Checking the archive (this may take a little while)..."
 tar -tzf "$A" >/dev/null
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+echo "Extracting Symul Browser..."
 tar -xzf "$A" -C "$T"
 S="$T/Symul-Browser"; test -x "$S/Symul-Browser" || { echo "Invalid archive contents."; exit 1; }
 I="${XDG_DATA_HOME:-$HOME/.local/share}/symul-browser"
 D="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 mkdir -p "$I/app.new" "$D"
+echo "Installing application files..."
 cp -a "$S/." "$I/app.new/"
 chmod +x "$I/app.new/Symul-Browser"
 rm -rf "$I/app"; mv "$I/app.new" "$I/app"
-printf '[Desktop Entry]\nVersion=1.0\nType=Application\nName=Symul Browser\nGenericName=Web Browser\nComment=Experimental keyboard-first Qt WebEngine browser\nExec="%s" %%U\nIcon=web-browser\nTerminal=false\nCategories=Network;WebBrowser;\nStartupNotify=true\n' "$I/app/Symul-Browser" > "$D/symul-browser.desktop"
+printf '[Desktop Entry]\\nVersion=1.0\\nType=Application\\nName=Symul Browser\\nGenericName=Web Browser\\nComment=Experimental keyboard-first Qt WebEngine browser\\nExec="%s" %%U\\nIcon=web-browser\\nTerminal=false\\nCategories=Network;WebBrowser;\\nStartupNotify=true\\n' "$I/app/Symul-Browser" > "$D/symul-browser.desktop"
 chmod 644 "$D/symul-browser.desktop"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$D" >/dev/null 2>&1 || true
 command -v kbuildsycoca6 >/dev/null 2>&1 && kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
