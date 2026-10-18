@@ -1,8 +1,8 @@
 # Symul Browser
 
-**Symul Browser** is an experimental, keyboard-first desktop browser built with **Python, PySide6, and Qt WebEngine**. The first prototype focuses on reliable page loading and navigation, with a hidden tab strip and keyboard controls.
+**Symul Browser** is an experimental, keyboard-first desktop browser built with **Python, PySide6, and Qt WebEngine**. The first prototype focuses on page loading and navigation, with a hidden tab strip and keyboard controls.
 
-> **Status:** Early prototype. It is a test browser, not yet a polished daily-driver replacement. Chrome extension support and the planned custom tab switcher are not implemented yet.
+> **Status:** Early prototype. It is an experimental test browser, not yet a polished daily-driver replacement. Chrome extension support and the planned custom tab switcher are not implemented yet.
 
 ## Current prototype
 
@@ -22,7 +22,7 @@ Because the tab strip is hidden, use the keyboard shortcuts to navigate between 
 
 ## Quick install (Linux x86_64)
 
-The Linux bundle is built in the cloud by GitHub Actions. Installing does **not** create a Python virtual environment or install PySide6/PyInstaller on your computer; it downloads the prebuilt bundle and adds a KDE application-menu entry.
+GitHub Actions builds the application on GitHub and uploads the finished bundle as an asset on a GitHub Release. The installer downloads that built bundle; it does **not** install Python, PySide6, or PyInstaller or compile the app on your computer.
 
 Copy and paste:
 
@@ -36,18 +36,23 @@ chmod +x install.sh uninstall.sh
 ./install.sh
 ```
 
-You can make a fork on GitHub first and clone your fork instead. The installer currently downloads the published upstream nightly binary. A fork's own source changes will only be included in its binary after its GitHub Actions workflow has run and published that fork's nightly release.
+### When is the downloadable build updated?
+
+- **Push to `main`:** GitHub Actions builds the app and updates the rolling `main` release.
+- **Publish a GitHub Release:** GitHub Actions builds the release tag and attaches the archive to that versioned release.
+
+The installer downloads the rolling `main` build. To install a specific published version instead, download `symul-browser-linux-x86_64.tar.gz` from that version's GitHub Release and extract it manually.
 
 ### What the installer does
 
 1. Checks that the machine is Linux x86_64 and that `curl` and `tar` are available.
-2. Downloads `symul-browser-linux-x86_64.tar.gz` from the project's GitHub nightly release.
-3. Extracts the prebuilt application to `~/.local/share/symul-browser/app/` (or the equivalent under `$XDG_DATA_HOME`).
-4. Creates `~/.local/share/applications/symul-browser.desktop`, so **Symul Browser** appears in the application menu.
+2. Downloads `symul-browser-linux-x86_64.tar.gz` from the project's rolling `main` GitHub Release.
+3. Installs the prebuilt application to `~/.local/share/symul-browser/app/` (or the equivalent under `$XDG_DATA_HOME`).
+4. Creates `~/.local/share/applications/symul-browser.desktop`, so **Symul Browser** appears in the KDE application menu.
 
 No Python, pip, virtual environment, or PyInstaller build is needed on the target computer. The bundle is built on Ubuntu 24.04 and may still require compatible system libraries on the Linux distribution where it runs.
 
-**If installation says the nightly build cannot be downloaded**, the GitHub Actions workflow may not have run successfully yet. Check the [Actions page](https://github.com/Chibbit-99/Symul-Browser/actions) and wait for a successful build/release.
+**If installation says the build cannot be downloaded**, the first successful GitHub Actions build must finish before the rolling `main` release exists. Check the [Actions page](https://github.com/Chibbit-99/Symul-Browser/actions).
 
 ## Uninstall
 
@@ -57,7 +62,7 @@ From the source checkout:
 ./uninstall.sh
 ```
 
-The uninstaller asks for confirmation, removes the installed application and application-menu entry, and cleans up any old build files left by previous versions of the installer. It **does not delete your source checkout or personal browser profile data**.
+The uninstaller asks for confirmation, removes the installed application and application-menu entry, and cleans up old build files left by previous versions of the installer. It **does not delete your source checkout or personal browser profile data**.
 
 ## Development
 
@@ -103,7 +108,7 @@ Qt WebEngine is Chromium-based, but it is **not full Google Chrome**. Extension 
 - [x] Basic browser window and web page rendering
 - [x] Address bar, back/forward, and reload
 - [x] Hidden tab strip and keyboard tab controls
-- [x] Cloud Linux build workflow and prebuilt-bundle installer (pending first successful release)
+- [x] Cloud Linux build workflow and prebuilt-bundle installer (first successful build still needs verification)
 - [ ] Custom keyboard-driven tab switcher
 - [ ] Settings UI and profile controls
 - [ ] Investigate Qt WebEngine extension APIs
