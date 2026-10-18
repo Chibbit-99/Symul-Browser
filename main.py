@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
-from PySide6.QtCore import QUrl, Qt
+from PySide6.QtCore import QObject, QUrl, Qt, Slot
 from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineScript
 from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWebChannel import QWebChannel
 
 
 APP_NAME = "Symul Browser"
@@ -142,6 +143,7 @@ class BrowserTab(QWidget):
         if self.browser.tabs.currentWidget() is self:
             self.browser.address.setText(url.toString())
             self.browser.update_security(url)
+            self.browser.sync_chrome()
 
     def on_title_changed(self, title):
         self.browser.update_tab_title(self, title)
@@ -157,6 +159,53 @@ class BrowserTab(QWidget):
             self.browser.progress.setVisible(False)
             self.browser.statusBar().showMessage("Ready" if ok else "Page couldn't be loaded", 2500)
             self.browser.refresh_buttons()
+
+class BrowserChromeBridge(QObject):
+    """JavaScript bridge between the HTML chrome and real Qt WebEngine tabs."""
+    def __init__(self, browser):
+        super().__init__(browser)
+        self.browser = browser
+    @Slot()
+    def ready(self): self.browser.sync_chrome()
+    @Slot(str)
+    def navigate(self, text):
+        tab = self.browser.current_tab()
+        if tab: tab.navigate(text)
+    @Slot(str)
+    def openUrl(self, url):
+        if url:
+            tab = self.browser.current_tab()
+            if tab: tab.view.setUrl(QUrl(url))
+    @Slot()
+    def back(self):
+        tab = self.browser.current_tab()
+        if tab: tab.view.back()
+    @Slot()
+    def forward(self):
+        tab = self.browser.current_tab()
+        if tab: tab.view.forward()
+    @Slot()
+    def reload(self): self.browser.reload_or_stop()
+    @Slot()
+    def home(self):
+        tab = self.browser.current_tab()
+        if tab: tab.view.setUrl(QUrl(HOME_URL))
+    @Slot()
+    def newTab(self): self.browser.new_tab()
+    @Slot(int)
+    def closeTab(self, index): self.browser.close_tab(index)
+    @Slot(int)
+    def selectTab(self, index):
+        if 0 <= index < self.browser.tabs.count(): self.browser.tabs.setCurrentIndex(index)
+    @Slot()
+    def toggleBookmark(self): self.browser.toggle_bookmark()
+    @Slot()
+    def extensions(self): self.browser.show_extensions()
+    @Slot()
+    def downloads(self): self.browser.show_downloads()
+    @Slot()
+    def menu(self): self.browser.show_browser_menu()
+
 
 class SymulBrowser(QMainWindow):
     def __init__(self):
@@ -183,84 +232,44 @@ class SymulBrowser(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        chrome = QWidget(root)
-        chrome.setObjectName("chrome")
-        chrome_layout = QVBoxLayout(chrome)
-        chrome_layout.setContentsMargins(8, 0, 8, 3)
-        chrome_layout.setSpacing(0)
+        # The browser chrome is rendered from the HTML prototype.
+        self.chrome_view = QWebEngineView(root)
+        self.chrome_view.setFixedHeight(80)
+        self.chrome_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        chrome_page = QWebEnginePage(self.profile, self.chrome_view)
+        self.chrome_view.setPage(chrome_page)
+        self.chrome_channel = QWebChannel(self.chrome_view.page())
+        self.chrome_bridge = BrowserChromeBridge(self)
+        self.chrome_channel.registerObject("browserBridge", self.chrome_bridge)
+        self.chrome_view.page().setWebChannel(self.chrome_channel)
+        self.chrome_view.loadFinished.connect(lambda _ok: self.sync_chrome())
+        self.chrome_view.setUrl(QUrl.fromLocalFile(str(APP_DIR / "resources" / "browser_chrome.html")))
+        root_layout.addWidget(self.chrome_view)
 
-        tab_row = QHBoxLayout()
-        tab_row.setContentsMargins(0, 0, 0, 0)
-        tab_row.setSpacing(0)
-        self.tab_bar = QTabBar(chrome)
-        self.tab_bar.setObjectName("tabStrip")
-        self.tab_bar.setExpanding(False)
-        self.tab_bar.setUsesScrollButtons(True)
-        self.tab_bar.setTabsClosable(True)
-        self.tab_bar.setMovable(False)
-        self.tab_bar.setElideMode(Qt.TextElideMode.ElideRight)
-        self.tab_bar.currentChanged.connect(self._select_tab_from_bar)
-        self.tab_bar.tabCloseRequested.connect(self.close_tab)
-        tab_row.addWidget(self.tab_bar, 1)
-        self.new_tab_button = self.button("+", "New tab (Ctrl+T)", self.new_tab)
-        self.new_tab_button.setFixedSize(28, 28)
-        tab_row.addWidget(self.new_tab_button)
-        chrome_layout.addLayout(tab_row)
-
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(2)
-        self.back_button = self.button("‹", "Back", lambda: self.current_tab().view.back())
-        self.forward_button = self.button("›", "Forward", lambda: self.current_tab().view.forward())
-        self.reload_button = self.button("↻", "Reload", self.reload_or_stop)
-        self.home_button = self.button("⌂", "Home", lambda: self.current_tab().view.setUrl(QUrl(HOME_URL)))
-        row.addWidget(self.back_button)
-        row.addWidget(self.forward_button)
-        row.addWidget(self.reload_button)
-        row.addWidget(self.home_button)
-
-        self.security = QLabel("◈", chrome)
-        self.security.setObjectName("security")
-        self.security.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        row.addWidget(self.security)
-
-        self.address = QLineEdit(chrome)
-        self.address.setObjectName("omnibox")
-        self.address.setPlaceholderText("Search Symul or enter an address")
-        self.address.setClearButtonEnabled(True)
-        self.address.setMinimumWidth(200)
+        # Compatibility state used by existing browser commands and status reporting.
+        self.address = QLineEdit(root)
         self.address.returnPressed.connect(self.navigate)
-        self.address.installEventFilter(self)
-        row.addWidget(self.address, 1)
-
-        self.bookmark_button = self.button("☆", "Bookmark this page", self.toggle_bookmark)
-        row.addWidget(self.bookmark_button)
-        self.tabs_button = self.button("▣ 1", "Switch tabs (Ctrl+Tab)", self.show_tab_menu)
-        self.tabs_button.setMinimumWidth(54)
-        row.addWidget(self.tabs_button)
-        self.extensions_button = self.button("🧩", "Loaded local extensions", self.show_extensions)
-        row.addWidget(self.extensions_button)
-        self.downloads_button = self.button("↓", "Downloads", self.show_downloads)
-        row.addWidget(self.downloads_button)
-        self.menu_button = self.button("⋮", "Symul menu", self.show_browser_menu)
-        self.menu_button.setObjectName("menuButton")
-        row.addWidget(self.menu_button)
-        chrome_layout.addLayout(row)
-
-        self.bookmark_bar = QWidget(chrome)
-        self.bookmark_bar.setObjectName("bookmarkBar")
-        self.bookmark_layout = QHBoxLayout(self.bookmark_bar)
-        self.bookmark_layout.setContentsMargins(8, 1, 8, 2)
-        self.bookmark_layout.setSpacing(2)
-        chrome_layout.addWidget(self.bookmark_bar)
-
-        self.progress = QProgressBar(chrome)
-        self.progress.setTextVisible(False)
+        self.security = QLabel(root)
+        self.progress = QProgressBar(root)
         self.progress.setRange(0, 100)
-        self.progress.setFixedHeight(2)
         self.progress.hide()
-        chrome_layout.addWidget(self.progress)
-        root_layout.addWidget(chrome)
+        self.back_button = QPushButton(root)
+        self.forward_button = QPushButton(root)
+        self.reload_button = QPushButton(root)
+        self.home_button = QPushButton(root)
+        self.bookmark_button = QPushButton(root)
+        self.tabs_button = QPushButton(root)
+        self.extensions_button = QPushButton(root)
+        self.downloads_button = QPushButton(root)
+        self.menu_button = QPushButton(root)
+        for control in (self.address, self.security, self.progress, self.back_button,
+                        self.forward_button, self.reload_button, self.home_button,
+                        self.bookmark_button, self.tabs_button, self.extensions_button,
+                        self.downloads_button, self.menu_button):
+            control.hide()
+        status = QStatusBar(self)
+        self.setStatusBar(status)
+        self.statusBar().showMessage("Ready")
 
         self.tabs = _TabStack(root)
         self.tabs.browser = self
@@ -276,6 +285,32 @@ class SymulBrowser(QMainWindow):
         self.refresh_bookmark_bar()
         self.new_tab()
         self.apply_shortcuts()
+
+    def sync_chrome(self):
+        """Synchronise the HTML chrome with live WebEngine tabs and bookmarks."""
+        if not hasattr(self, "chrome_view") or not hasattr(self, "tabs") or not hasattr(self, "progress"):
+            return
+        current = self.current_tab()
+        colors = ["#4285f4", "#d93025", "#f48024", "#34a853", "#5f6368", "#7b61ff", "#10a37f", "#1da1f2"]
+        tab_states = []
+        for index in range(self.tabs.count()):
+            tab = self.tabs.widget(index)
+            url = tab.view.url().toString()
+            title = tab.view.title() or ("New Tab" if not url or url == "about:blank" else urlparse(url).hostname or url)
+            tab_states.append({"title": title, "url": "" if url == "about:blank" else url, "color": colors[index % len(colors)]})
+        url = current.view.url().toString() if current else ""
+        state = {
+            "tabs": tab_states, "active": self.tabs.currentIndex(),
+            "url": "" if url == "about:blank" else url,
+            "title": current.view.title() if current else "New Tab",
+            "canBack": bool(current and current.view.history().canGoBack()),
+            "canForward": bool(current and current.view.history().canGoForward()),
+            "loading": bool(current and self.progress.isVisible() and self.progress.value() < 100),
+            "bookmarked": self.is_bookmarked(url) if url and url != "about:blank" else False,
+            "bookmarks": self.load_bookmarks(),
+        }
+        payload = json.dumps(state).replace("</", "<\\/")
+        self.chrome_view.page().runJavaScript("if(window.setBrowserState)window.setBrowserState(" + payload + ");")
 
     def load_local_extensions(self):
         """Load basic unpacked extensions that declare manifest content scripts."""
@@ -396,9 +431,7 @@ class SymulBrowser(QMainWindow):
     def new_tab(self, url=HOME_URL):
         tab = BrowserTab(self.profile, self, self.tabs)
         index = self.tabs.addTab(tab, "New tab")
-        self.tab_bar.addTab("New tab")
         self.tabs.setCurrentIndex(index)
-        self.tab_bar.setCurrentIndex(index)
         tab.view.setUrl(QUrl(url))
         self.address.setFocus()
         self.address.selectAll()
@@ -413,7 +446,6 @@ class SymulBrowser(QMainWindow):
             return
         tab = self.tabs.widget(index)
         self.tabs.removeTab(index)
-        self.tab_bar.removeTab(index)
         tab.deleteLater()
         if self.tabs.count() == 0:
             self.new_tab()
@@ -425,9 +457,9 @@ class SymulBrowser(QMainWindow):
         if index >= 0:
             clean_title = (title or "New tab")[:80]
             self.tabs.setTabText(index, clean_title)
-            self.tab_bar.setTabText(index, clean_title)
         if tab is self.current_tab():
             self.update_window_title()
+        self.sync_chrome()
 
     def update_window_title(self, *_):
         tab = self.current_tab()
@@ -440,14 +472,14 @@ class SymulBrowser(QMainWindow):
             return
         self.address.setText(tab.view.url().toString())
         index = self.tabs.currentIndex()
-        if index >= 0 and self.tab_bar.currentIndex() != index:
-            self.tab_bar.setCurrentIndex(index)
         self.update_security(tab.view.url())
         self.update_window_title()
         self.refresh_buttons()
         self.tabs_button.setText("▣ " + str(self.tabs.count()))
+        self.sync_chrome()
         self.bookmark_button.setText("★" if self.is_bookmarked(tab.view.url().toString()) else "☆")
         self.progress.setVisible(False)
+        self.sync_chrome()
 
     def navigate(self):
         self.current_tab().navigate()
@@ -475,6 +507,7 @@ class SymulBrowser(QMainWindow):
         if tab:
             self.progress.setValue(value)
             self.progress.setVisible(value < 100)
+            self.sync_chrome()
 
     def update_security(self, url):
         scheme = url.scheme()
@@ -537,6 +570,7 @@ class SymulBrowser(QMainWindow):
             bookmarks.append({"title": tab.view.title() or url, "url": url})
         self.save_bookmarks(bookmarks)
         self.refresh_bookmark_bar()
+        self.sync_chrome()
         self.bookmark_button.setText("★" if not existing else "☆")
         self.statusBar().showMessage("Bookmark removed" if existing else "Page bookmarked", 2200)
 
@@ -570,6 +604,7 @@ class SymulBrowser(QMainWindow):
             button.clicked.connect(lambda checked=False, target=url: self.current_tab().view.setUrl(QUrl(target)))
             self.bookmark_layout.addWidget(button)
         self.bookmark_layout.addStretch(1)
+        self.sync_chrome()
 
     def show_extensions(self):
         menu = QMenu(self)
