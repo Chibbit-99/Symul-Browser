@@ -4,7 +4,8 @@ set -Eeuo pipefail
 APP_ID="symul-browser"
 REPO="Chibbit-99/Symul-Browser"
 ASSET="symul-browser-linux-x86_64.tar.gz"
-RELEASE_URL="https://github.com/$REPO/releases/download/nightly/$ASSET"
+# The rolling main build is updated after each successful push to main.
+RELEASE_URL="https://github.com/$REPO/releases/download/main/$ASSET"
 INSTALL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/symul-browser"
 BIN_DIR="$INSTALL_DIR/app"
 DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
@@ -32,8 +33,8 @@ done
 echo "==> Downloading the prebuilt Symul Browser Linux bundle"
 if ! curl --fail --location --retry 3 --silent --show-error "$RELEASE_URL" -o "$TMP_DIR/$ASSET"; then
     echo >&2
-    echo "Could not download the nightly build." >&2
-    echo "The GitHub Actions build may not have finished yet:" >&2
+    echo "Could not download the latest main-branch build." >&2
+    echo "Check that the GitHub Actions build succeeded:" >&2
     echo "https://github.com/$REPO/actions" >&2
     exit 1
 fi
@@ -46,11 +47,15 @@ if [[ ! -x "$TMP_DIR/Symul-Browser/Symul-Browser" ]]; then
 fi
 
 echo "==> Installing application to $INSTALL_DIR"
-mkdir -p "$BIN_DIR" "$DESKTOP_DIR"
+mkdir -p "$DESKTOP_DIR"
+# Stage the new app before replacing the current installation.
+STAGING_DIR="$INSTALL_DIR/app.new"
+rm -rf -- "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+cp -a "$TMP_DIR/Symul-Browser/." "$STAGING_DIR/"
+chmod +x "$STAGING_DIR/Symul-Browser"
 rm -rf -- "$BIN_DIR"
-mkdir -p "$BIN_DIR"
-cp -a "$TMP_DIR/Symul-Browser/." "$BIN_DIR/"
-chmod +x "$BIN_DIR/Symul-Browser"
+mv -- "$STAGING_DIR" "$BIN_DIR"
 
 cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
