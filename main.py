@@ -197,7 +197,7 @@ class SymulBrowser(QMainWindow):
         self.tab_bar.setExpanding(False)
         self.tab_bar.setUsesScrollButtons(True)
         self.tab_bar.setTabsClosable(True)
-        self.tab_bar.setMovable(True)
+        self.tab_bar.setMovable(False)
         self.tab_bar.setElideMode(Qt.TextElideMode.ElideRight)
         self.tab_bar.currentChanged.connect(self._select_tab_from_bar)
         self.tab_bar.tabCloseRequested.connect(self.close_tab)
