@@ -209,6 +209,8 @@ class BrowserChromeBridge(QObject):
     def downloads(self): self.browser.show_downloads()
     @Slot()
     def menu(self): self.browser.show_browser_menu()
+    @Slot()
+    def showTabMenu(self): self.browser.show_tab_menu()
 
 
 class SymulBrowser(QMainWindow):
@@ -380,6 +382,7 @@ class SymulBrowser(QMainWindow):
         self.actions_by_name = {}
         entries = [
             ("New tab", "Alt+T", lambda: self.new_tab()),
+            ("Ctrl+T extension test", "Ctrl+T", self.handle_ctrl_t_extension),
             ("Close tab", "Ctrl+W", lambda: self.close_current_tab()),
             ("Focus address bar", "Ctrl+L", self.focus_address),
             ("Next tab", "Ctrl+Tab", self.next_tab),
@@ -530,6 +533,13 @@ class SymulBrowser(QMainWindow):
         if self.tabs.count() > 1:
             self.tabs.setCurrentIndex((self.tabs.currentIndex() - 1) % self.tabs.count())
 
+    def handle_ctrl_t_extension(self):
+        """Route Ctrl+T to the test extension because WebEngine consumes page shortcuts."""
+        if any(extension.get("name") == "Symul Test Alert" for extension in self.local_extensions):
+            tab = self.current_tab()
+            if tab:
+                tab.view.page().runJavaScript('alert("Ctrl+T was pressed!")')
+
     def show_tab_menu(self):
         menu = QMenu(self)
         for i in range(self.tabs.count()):
@@ -539,7 +549,8 @@ class SymulBrowser(QMainWindow):
             action.triggered.connect(lambda checked=False, index=i: self.tabs.setCurrentIndex(index))
         menu.addSeparator()
         menu.addAction("＋  New tab", lambda: self.new_tab())
-        menu.exec(self.tabs_button.mapToGlobal(self.tabs_button.rect().bottomLeft()))
+        anchor = self.chrome_view.mapToGlobal(QPoint(max(8, self.chrome_view.width() - 310), 38))
+        menu.exec(anchor)
 
     def show_browser_menu(self):
         menu = QMenu(self)
