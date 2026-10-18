@@ -217,7 +217,7 @@ class SymulBrowser(QMainWindow):
         self.tabs_button = self.button("▣ 1", "Switch tabs (Ctrl+Tab)", self.show_tab_menu)
         self.tabs_button.setMinimumWidth(54)
         row.addWidget(self.tabs_button)
-        self.new_tab_button = self.button("+", "New tab (Ctrl+T)", lambda: self.new_tab())
+        self.new_tab_button = self.button("+", "New tab (Alt+T)", lambda: self.new_tab())
         row.addWidget(self.new_tab_button)
         self.menu_button = self.button("⋮", "Symul menu", self.show_browser_menu)
         self.menu_button.setObjectName("menuButton")
@@ -311,7 +311,7 @@ class SymulBrowser(QMainWindow):
     def _build_actions(self):
         self.actions_by_name = {}
         entries = [
-            ("New tab", "Ctrl+T", lambda: self.new_tab()),
+            ("New tab", "Alt+T", lambda: self.new_tab()),
             ("Close tab", "Ctrl+W", lambda: self.close_current_tab()),
             ("Focus address bar", "Ctrl+L", self.focus_address),
             ("Next tab", "Ctrl+Tab", self.next_tab),
@@ -581,7 +581,7 @@ class SymulBrowser(QMainWindow):
             self, "Symul Browser",
             "Symul Browser\\nA compact Chromium-based browser with a keyboard-first workflow.\\n\\n"
             "Shortcuts\\n"
-            "Ctrl+T  New tab\\nCtrl+W  Close tab\\nCtrl+L  Focus address bar\\n"
+            "Alt+T  New tab\\nCtrl+W  Close tab\\nCtrl+L  Focus address bar\\n"
             "Ctrl+Tab / Ctrl+Shift+Tab  Switch tabs\\nCtrl+F  Find on page\\n"
             "Ctrl+R  Reload\\nCtrl+Plus / Ctrl+Minus  Zoom\\nF11  Fullscreen\\n\\n"
             "Built with PySide6 and Qt WebEngine."
