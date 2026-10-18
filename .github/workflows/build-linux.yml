@@ -1,0 +1,59 @@
+name: Build Linux application
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6 PyInstaller
+
+      - name: Build application bundle
+        run: |
+          python -m PyInstaller \
+            --noconfirm \
+            --clean \
+            --windowed \
+            --name Symul-Browser \
+            --onedir \
+            --collect-all PySide6 \
+            --collect-all shiboken6 \
+            --distpath dist \
+            --workpath build \
+            --specpath build \
+            main.py
+          test -x dist/Symul-Browser/Symul-Browser
+
+      - name: Package Linux x86_64 bundle
+        run: tar -czf symul-browser-linux-x86_64.tar.gz -C dist Symul-Browser
+
+      - name: Publish/update nightly release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Symul Browser Nightly
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          files: symul-browser-linux-x86_64.tar.gz
+          body: |
+            Automatically built Linux x86_64 bundle from the latest successful build of the main branch.
+            This is an experimental build, not a stable release.
