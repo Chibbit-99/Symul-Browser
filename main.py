@@ -9,10 +9,11 @@ from urllib.parse import quote, urlparse
 
 from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton,
-    QProgressBar, QShortcut, QStatusBar, QVBoxLayout, QWidget,
+    QProgressBar, QStatusBar, QVBoxLayout, QWidget,
 )
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
 from PySide6.QtWebEngineWidgets import QWebEngineView
