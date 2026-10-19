@@ -201,7 +201,31 @@
   .current-tab-card .current-tab-count { flex: 0 0 auto; font-size: 10px; font-weight: 600;
     min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent);
     color: #fff; display: inline-flex; align-items: center; justify-content: center; }
-  .current-tab-card .current-tab-menu-icon { width: 13px; height: 13px; flex: 0 0 auto; }
+
+  .titlebar { position: relative; z-index: 5; }
+  .current-tab-menu-icon { display: none; }
+  .tab-dropdown {
+    position: absolute; top: 32px; left: 0; width: 310px; max-height: 260px;
+    display: flex; flex-direction: column; gap: 3px; padding: 7px;
+    background: var(--toolbar); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.22); z-index: 1000;
+  }
+  .tab-dropdown[hidden] { display: none; }
+  .tab-dropdown-heading { padding: 5px 8px 7px; color: var(--text-muted); font-size: 11px; font-weight: 600; }
+  .tab-dropdown-list { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+  .tab-dropdown-item { display: flex; align-items: center; gap: 9px; width: 100%; min-width: 0;
+    border: 0; border-radius: 7px; padding: 8px; background: transparent; color: var(--text);
+    text-align: left; font: inherit; font-size: 12px; cursor: pointer; }
+  .tab-dropdown-item:hover { background: var(--field-hover); }
+  .tab-dropdown-item.active { background: var(--field); }
+  .tab-dropdown-item img { width: 16px; height: 16px; object-fit: contain; flex: 0 0 auto; }
+  .tab-dropdown-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .tab-dropdown-item .active-dot { color: var(--accent); font-size: 14px; flex: 0 0 auto; }
+  .tab-dropdown-new { display: flex; align-items: center; gap: 9px; border: 0; border-radius: 7px;
+    padding: 9px 8px; margin-top: 3px; background: transparent; color: var(--text); font: inherit;
+    font-size: 12px; text-align: left; cursor: pointer; }
+  .tab-dropdown-new:hover { background: var(--field-hover); }
+
   .window-controls { display: flex; align-items: stretch; height: 36px; margin-left: auto; gap: 0; }
   .wc { width: 46px; height: 36px; border: 0; border-radius: 0; background: transparent;
     color: var(--text); display: grid; place-items: center; cursor: pointer; padding: 0; }
@@ -417,6 +441,11 @@
       <span class="current-tab-count" id="currentTabCount">1</span>
       <svg class="current-tab-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2"/></svg>
     </button>
+    <div class="tab-dropdown" id="tabDropdown" hidden>
+      <div class="tab-dropdown-heading">OPEN TABS</div>
+      <div class="tab-dropdown-list" id="tabDropdownList"></div>
+      <button class="tab-dropdown-new" id="tabDropdownNew" type="button"><span aria-hidden="true">＋</span> New tab</button>
+    </div>
     <div class="window-controls">
       <button class="wc" id="minimizeWindow" title="Minimise" aria-label="Minimise">
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h8"/></svg>
@@ -475,7 +504,7 @@
 let bridge=null,state={tabs:[],active:0,bookmarks:[],url:"",title:"New Tab"};
 const $=id=>document.getElementById(id);
 function call(name,...args){if(bridge&&bridge[name])bridge[name](...args);}
-function setBrowserState(raw){
+let tabDropdownOpen=false;\nfunction setBrowserState(raw){
  state=typeof raw==="string"?JSON.parse(raw):raw;
  const addr=$("address");if(document.activeElement!==addr)addr.value=state.url||"";
  $("currentTabCount").textContent=String(state.tabs.length||1);
@@ -484,7 +513,7 @@ function setBrowserState(raw){
  $("starIcon").setAttribute("fill",state.bookmarked?"currentColor":"none");
  $("star").classList.toggle("on",!!state.bookmarked);
  $("reloadIcon").parentElement.classList.toggle("spin",!!state.loading);
- renderBookmarks();renderCurrentTab();
+ renderBookmarks();renderCurrentTab();if(tabDropdownOpen)renderTabDropdown();
  $("bookmarks").hidden=!(state.bookmarks||[]).length;
  requestAnimationFrame(()=>call("setChromeHeight",Math.ceil($("window").getBoundingClientRect().height)));
 }
@@ -498,6 +527,30 @@ function renderTabs(){
   close.addEventListener("click",e=>{e.stopPropagation();call("closeTab",i);});
   el.append(fav,title,close);el.addEventListener("click",()=>{call("selectTab",i);closeTabMenu();});wrap.append(el);
  });
+}
+function renderTabDropdown(){
+ const wrap=$("tabDropdownList");wrap.replaceChildren();
+ (state.tabs||[]).forEach((tab,i)=>{
+  const item=document.createElement("button");item.type="button";
+  item.className="tab-dropdown-item"+(i===state.active?" active":"");
+  const fav=document.createElement("img");fav.alt="";fav.src=tab.favicon||"../icon.png";
+  const title=document.createElement("span");title.textContent=tab.title||"New Tab";
+  item.append(fav,title);
+  if(i===state.active){const dot=document.createElement("span");dot.className="active-dot";dot.textContent="●";item.append(dot);}
+  item.addEventListener("click",()=>{call("selectTab",i);setTabDropdown(false);});
+  wrap.append(item);
+ });
+}
+function setTabDropdown(open){
+ tabDropdownOpen=open;
+ const dropdown=$("tabDropdown");
+ dropdown.hidden=!open;
+ if(open){
+  const card=$("currentTabCard");
+  dropdown.style.left=Math.max(8,card.offsetLeft)+"px";
+  renderTabDropdown();
+ }
+ requestAnimationFrame(()=>call("setChromeHeight",Math.ceil($("window").getBoundingClientRect().height)+(open?Math.min(260,42+(state.tabs||[]).length*38):0)));
 }
 function renderCurrentTab(){
  const tab=(state.tabs||[])[state.active]||{};
