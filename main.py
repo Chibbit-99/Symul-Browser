@@ -587,41 +587,39 @@ class SymulBrowser(QMainWindow):
 
     def show_tab_menu(self, x=None, y=None):
         menu = QMenu(self)
-        # Make the popup window itself transparent so the rounded stylesheet
-        # corners are transparent too (otherwise the native window shows a
-        # square white rectangle around the rounded menu).
+        # Keep the popup's corners transparent and match the browser's tab strip
+        # instead of using the unrelated white system-menu appearance.
         menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         menu.setWindowFlags(menu.windowFlags() | Qt.WindowType.FramelessWindowHint)
-
         fusion_style = QStyleFactory.create("Fusion")
         if fusion_style is not None:
             menu.setStyle(fusion_style)
         menu.setStyleSheet("""
             QMenu {
-                background-color: #ffffff;
+                background-color: #dee1e6;
                 color: #202124;
-                border: 1px solid #dadce0;
-                border-radius: 12px;
-                padding: 7px;
+                border: 1px solid #c5c9d0;
+                border-radius: 10px;
+                padding: 6px;
                 font-size: 10pt;
             }
             QMenu::item {
                 background-color: transparent;
                 padding: 9px 30px 9px 10px;
                 margin: 2px;
-                border-radius: 7px;
+                border-radius: 6px;
                 min-width: 250px;
                 min-height: 20px;
             }
             QMenu::item:selected {
-                background-color: #e8f0fe;
+                background-color: #cfd3da;
                 color: #202124;
             }
-            QMenu::item:disabled { color: #9aa0a6; }
+            QMenu::item:disabled { color: #5f6368; }
             QMenu::icon { padding-left: 2px; }
             QMenu::separator {
                 height: 1px;
-                background-color: #dadce0;
+                background-color: #c5c9d0;
                 margin: 6px 8px;
             }
         """)
@@ -629,7 +627,6 @@ class SymulBrowser(QMainWindow):
             tab = self.tabs.widget(i)
             title = tab.view.title() or "New tab"
             action = menu.addAction(title[:55])
-            # Use each page's real favicon instead of a placeholder dot.
             favicon = tab.view.icon()
             if not favicon.isNull():
                 action.setIcon(favicon)
