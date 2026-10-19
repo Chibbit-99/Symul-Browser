@@ -171,6 +171,22 @@ class BrowserChromeBridge(QObject):
         self.browser = browser
     @Slot()
     def ready(self): self.browser.sync_chrome()
+    @Slot()
+    def minimizeWindow(self): self.browser.showMinimized()
+    @Slot()
+    def toggleMaximizeWindow(self):
+        if self.browser.isMaximized():
+            self.browser.showNormal()
+        else:
+            self.browser.showMaximized()
+        self.browser.sync_chrome()
+    @Slot()
+    def closeWindow(self): self.browser.close()
+    @Slot()
+    def beginWindowDrag(self):
+        handle = self.browser.windowHandle()
+        if handle:
+            handle.startSystemMove()
     @Slot(int)
     def setChromeHeight(self, height):
         self.browser.chrome_view.setFixedHeight(max(1, min(height, 120)))
@@ -220,6 +236,7 @@ class SymulBrowser(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(APP_NAME)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         if ICON_PATH.is_file():
             self.setWindowIcon(QIcon(str(ICON_PATH)))
         self.resize(1280, 820)
