@@ -229,8 +229,8 @@ class BrowserChromeBridge(QObject):
     def downloads(self): self.browser.show_downloads()
     @Slot()
     def menu(self): self.browser.show_browser_menu()
-    @Slot()
-    def showTabMenu(self): self.browser.show_tab_menu()
+    @Slot(int, int)
+    def showTabMenu(self, x, y): self.browser.show_tab_menu(x, y)
 
 
 class SymulBrowser(QMainWindow):
@@ -585,8 +585,15 @@ class SymulBrowser(QMainWindow):
             if tab:
                 tab.view.page().runJavaScript('alert("Ctrl+T was pressed!")')
 
-    def show_tab_menu(self):
+    def show_tab_menu(self, x=None, y=None):
         menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu { background: #ffffff; color: #202124; border: 1px solid #dadce0;
+                   border-radius: 10px; padding: 7px; min-width: 280px; }
+            QMenu::item { padding: 9px 28px 9px 12px; border-radius: 7px; }
+            QMenu::item:selected { background: #f1f3f4; }
+            QMenu::separator { height: 1px; background: #dadce0; margin: 5px 8px; }
+        """)
         for i in range(self.tabs.count()):
             tab = self.tabs.widget(i)
             title = tab.view.title() or "New tab"
@@ -594,7 +601,7 @@ class SymulBrowser(QMainWindow):
             action.triggered.connect(lambda checked=False, index=i: self.tabs.setCurrentIndex(index))
         menu.addSeparator()
         menu.addAction("＋  New tab", lambda: self.new_tab())
-        anchor = self.chrome_view.mapToGlobal(QPoint(max(8, self.chrome_view.width() - 310), 38))
+        anchor = self.chrome_view.mapToGlobal(QPoint(max(8, x if x is not None else self.chrome_view.width() - 310), y if y is not None else 38))
         menu.exec(anchor)
 
     def show_browser_menu(self):
