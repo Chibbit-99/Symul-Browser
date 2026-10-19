@@ -587,8 +587,12 @@ class SymulBrowser(QMainWindow):
 
     def show_tab_menu(self, x=None, y=None):
         menu = QMenu(self)
-        # Use Fusion so Qt's native platform menu styling cannot override the
-        # custom rounded Symul menu stylesheet.
+        # Make the popup window itself transparent so the rounded stylesheet
+        # corners are transparent too (otherwise the native window shows a
+        # square white rectangle around the rounded menu).
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        menu.setWindowFlags(menu.windowFlags() | Qt.WindowType.FramelessWindowHint)
+
         fusion_style = QStyleFactory.create("Fusion")
         if fusion_style is not None:
             menu.setStyle(fusion_style)
@@ -597,19 +601,24 @@ class SymulBrowser(QMainWindow):
                 background-color: #ffffff;
                 color: #202124;
                 border: 1px solid #dadce0;
-                border-radius: 10px;
-                padding: 6px;
+                border-radius: 12px;
+                padding: 7px;
                 font-size: 10pt;
             }
             QMenu::item {
                 background-color: transparent;
-                padding: 9px 32px 9px 12px;
-                margin: 1px;
-                border-radius: 6px;
+                padding: 9px 30px 9px 10px;
+                margin: 2px;
+                border-radius: 7px;
                 min-width: 250px;
+                min-height: 20px;
             }
-            QMenu::item:selected { background-color: #e8f0fe; color: #202124; }
+            QMenu::item:selected {
+                background-color: #e8f0fe;
+                color: #202124;
+            }
             QMenu::item:disabled { color: #9aa0a6; }
+            QMenu::icon { padding-left: 2px; }
             QMenu::separator {
                 height: 1px;
                 background-color: #dadce0;
@@ -619,10 +628,16 @@ class SymulBrowser(QMainWindow):
         for i in range(self.tabs.count()):
             tab = self.tabs.widget(i)
             title = tab.view.title() or "New tab"
-            action = menu.addAction(("●  " if i == self.tabs.currentIndex() else "    ") + title[:55])
+            action = menu.addAction(title[:55])
+            # Use each page's real favicon instead of a placeholder dot.
+            favicon = tab.view.icon()
+            if not favicon.isNull():
+                action.setIcon(favicon)
+            action.setToolTip(tab.view.url().toString())
             action.triggered.connect(lambda checked=False, index=i: self.tabs.setCurrentIndex(index))
         menu.addSeparator()
-        menu.addAction("＋  New tab", lambda: self.new_tab())
+        new_tab_action = menu.addAction("＋  New tab")
+        new_tab_action.triggered.connect(lambda checked=False: self.new_tab())
         anchor = self.chrome_view.mapToGlobal(QPoint(max(8, x if x is not None else self.chrome_view.width() - 310), y if y is not None else 38))
         menu.exec(anchor)
 
