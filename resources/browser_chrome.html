@@ -504,7 +504,8 @@
 let bridge=null,state={tabs:[],active:0,bookmarks:[],url:"",title:"New Tab"};
 const $=id=>document.getElementById(id);
 function call(name,...args){if(bridge&&bridge[name])bridge[name](...args);}
-let tabDropdownOpen=false;\nfunction setBrowserState(raw){
+let tabDropdownOpen=false;
+function setBrowserState(raw){
  state=typeof raw==="string"?JSON.parse(raw):raw;
  const addr=$("address");if(document.activeElement!==addr)addr.value=state.url||"";
  $("currentTabCount").textContent=String(state.tabs.length||1);
