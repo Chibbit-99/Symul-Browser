@@ -484,7 +484,7 @@ function setBrowserState(raw){
  $("starIcon").setAttribute("fill",state.bookmarked?"currentColor":"none");
  $("star").classList.toggle("on",!!state.bookmarked);
  $("reloadIcon").parentElement.classList.toggle("spin",!!state.loading);
- renderTabs();renderBookmarks();renderCurrentTab();
+ renderBookmarks();renderCurrentTab();
  $("bookmarks").hidden=!(state.bookmarks||[]).length;
  requestAnimationFrame(()=>call("setChromeHeight",Math.ceil($("window").getBoundingClientRect().height)));
 }
@@ -514,7 +514,6 @@ function renderBookmarks(){
 }
 function closeTabMenu(){$("tabPopup").hidden=true;}
 $("currentTabCard").addEventListener("click",()=>call("showTabMenu"));
-$("newTab").addEventListener("click",()=>{call("newTab");closeTabMenu();$("address").focus();});
 $("address").addEventListener("keydown",e=>{if(e.key==="Enter"){call("navigate",$("address").value);$("address").blur();}if(e.key==="Escape"){$("address").blur();setBrowserState(state);}});
 $("address").addEventListener("focus",e=>e.target.select());
 $("back").addEventListener("click",()=>call("back"));$("forward").addEventListener("click",()=>call("forward"));$("reload").addEventListener("click",()=>call("reload"));$("home").addEventListener("click",()=>call("home"));$("star").addEventListener("click",()=>call("toggleBookmark"));
@@ -526,10 +525,10 @@ $("minimizeWindow").addEventListener("click",()=>call("minimizeWindow"));
 $("maximizeWindow").addEventListener("click",()=>call("toggleMaximizeWindow"));
 $("closeWindow").addEventListener("click",()=>call("closeWindow"));
 $("titlebar").addEventListener("mousedown",e=>{
- if(e.button===0 && !e.target.closest(".window-controls")) call("beginWindowDrag");
+ if(e.button===0 && (e.target===$("titlebar") || e.target.closest("#titleDrag"))) call("beginWindowDrag");
 });
 $("titlebar").addEventListener("dblclick",e=>{
- if(!e.target.closest(".window-controls")) call("toggleMaximizeWindow");
+ if(e.target===$("titlebar") || e.target.closest("#titleDrag")) call("toggleMaximizeWindow");
 });
 new QWebChannel(qt.webChannelTransport,channel=>{bridge=channel.objects.browserBridge;call("ready");});
 </script>
