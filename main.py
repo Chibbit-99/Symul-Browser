@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import quote, urlparse
 
 from PySide6.QtCore import QObject, QPoint, QUrl, Qt, Slot
-from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
+from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton,
@@ -241,9 +241,12 @@ class SymulBrowser(QMainWindow):
         # The browser chrome is rendered from the HTML prototype.
         self.chrome_view = QWebEngineView(root)
         # The embedded chrome contains only the toolbar and bookmarks row.
-        self.chrome_view.setFixedHeight(80)
+        # Keep the widget close to their combined height and avoid Qt WebEngine's
+        # default black page background showing below the document content.
+        self.chrome_view.setFixedHeight(70)
         self.chrome_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         chrome_page = QWebEnginePage(self.profile, self.chrome_view)
+        chrome_page.setBackgroundColor(QColor("#ffffff"))
         self.chrome_view.setPage(chrome_page)
         self.chrome_channel = QWebChannel(self.chrome_view.page())
         self.chrome_bridge = BrowserChromeBridge(self)
