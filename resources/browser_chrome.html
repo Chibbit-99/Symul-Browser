@@ -182,6 +182,24 @@
   .wc:hover { background: var(--tab-hover); }
   .wc.close:hover { background: #c42b1c; color: #fff; }
 
+  /* Custom title bar replacing the native desktop title bar */
+  .titlebar {
+    height: 36px; min-height: 36px; display: flex; align-items: center;
+    padding-left: 12px; background: var(--chrome); color: var(--text);
+    user-select: none; -webkit-user-select: none;
+  }
+  .title-brand { display: flex; align-items: center; gap: 8px; font-size: 12px;
+    font-weight: 600; flex: 1; height: 100%; min-width: 0; }
+  .title-brand-mark { width: 16px; height: 16px; border-radius: 5px;
+    background: var(--accent); color: white; display: grid; place-items: center;
+    font-size: 10px; font-weight: 800; }
+  .window-controls { display: flex; align-items: stretch; height: 36px; margin-left: auto; gap: 0; }
+  .wc { width: 46px; height: 36px; border: 0; border-radius: 0; background: transparent;
+    color: var(--text); display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .wc:hover { background: var(--tab-hover); }
+  .wc.close:hover { background: #c42b1c; color: #fff; }
+  .wc svg { width: 10px; height: 10px; }
+
   /* Toolbar */
   .toolbar {
     display: flex;
@@ -379,6 +397,23 @@
 </style>
 </head>
 <body><div class="window" id="window">
+  <div class="titlebar" id="titlebar">
+    <div class="title-brand" id="titleDrag">
+      <span class="title-brand-mark">S</span>
+      <span>Symul Browser</span>
+    </div>
+    <div class="window-controls">
+      <button class="wc" id="minimizeWindow" title="Minimise" aria-label="Minimise">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h8"/></svg>
+      </button>
+      <button class="wc" id="maximizeWindow" title="Maximise / restore" aria-label="Maximise">
+        <svg id="maximizeIcon" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="2" y="2" width="8" height="8" rx=".5"/></svg>
+      </button>
+      <button class="wc close" id="closeWindow" title="Close" aria-label="Close">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 2l8 8M10 2L2 10"/></svg>
+      </button>
+    </div>
+  </div>
   <div class="toolbar">
     <button class="btn" id="back" title="Back (Alt+Left)" aria-label="Back">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -481,6 +516,15 @@ document.querySelector('[aria-label="Extensions"]').addEventListener("click",()=
 document.querySelector('[aria-label="Downloads"]').addEventListener("click",()=>call("downloads"));
 document.querySelector('[aria-label="Menu"]').addEventListener("click",()=>call("menu"));
 document.addEventListener("keydown",e=>{const mod=e.ctrlKey||e.metaKey;if(mod&&e.key.toLowerCase()==="w"){e.preventDefault();call("closeTab",state.active);}if(mod&&e.key.toLowerCase()==="l"){e.preventDefault();$("address").focus();}if(mod&&e.key.toLowerCase()==="r"){e.preventDefault();call("reload");}if(e.altKey&&e.key==="ArrowLeft")call("back");if(e.altKey&&e.key==="ArrowRight")call("forward");});
+$("minimizeWindow").addEventListener("click",()=>call("minimizeWindow"));
+$("maximizeWindow").addEventListener("click",()=>call("toggleMaximizeWindow"));
+$("closeWindow").addEventListener("click",()=>call("closeWindow"));
+$("titlebar").addEventListener("mousedown",e=>{
+ if(e.button===0 && !e.target.closest(".window-controls")) call("beginWindowDrag");
+});
+$("titlebar").addEventListener("dblclick",e=>{
+ if(!e.target.closest(".window-controls")) call("toggleMaximizeWindow");
+});
 new QWebChannel(qt.webChannelTransport,channel=>{bridge=channel.objects.browserBridge;call("ready");});
 </script>
 </body></html>
