@@ -13,7 +13,7 @@ from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton,
-    QProgressBar, QStatusBar, QTabBar, QVBoxLayout, QWidget,
+    QProgressBar, QStatusBar, QStyleFactory, QTabBar, QVBoxLayout, QWidget,
 )
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineScript
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -587,12 +587,34 @@ class SymulBrowser(QMainWindow):
 
     def show_tab_menu(self, x=None, y=None):
         menu = QMenu(self)
+        # Use Fusion so Qt's native platform menu styling cannot override the
+        # custom rounded Symul menu stylesheet.
+        fusion_style = QStyleFactory.create("Fusion")
+        if fusion_style is not None:
+            menu.setStyle(fusion_style)
         menu.setStyleSheet("""
-            QMenu { background: #ffffff; color: #202124; border: 1px solid #dadce0;
-                   border-radius: 10px; padding: 7px; min-width: 280px; }
-            QMenu::item { padding: 9px 28px 9px 12px; border-radius: 7px; }
-            QMenu::item:selected { background: #f1f3f4; }
-            QMenu::separator { height: 1px; background: #dadce0; margin: 5px 8px; }
+            QMenu {
+                background-color: #ffffff;
+                color: #202124;
+                border: 1px solid #dadce0;
+                border-radius: 10px;
+                padding: 6px;
+                font-size: 10pt;
+            }
+            QMenu::item {
+                background-color: transparent;
+                padding: 9px 32px 9px 12px;
+                margin: 1px;
+                border-radius: 6px;
+                min-width: 250px;
+            }
+            QMenu::item:selected { background-color: #e8f0fe; color: #202124; }
+            QMenu::item:disabled { color: #9aa0a6; }
+            QMenu::separator {
+                height: 1px;
+                background-color: #dadce0;
+                margin: 6px 8px;
+            }
         """)
         for i in range(self.tabs.count()):
             tab = self.tabs.widget(i)
