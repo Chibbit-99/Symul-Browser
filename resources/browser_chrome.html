@@ -261,6 +261,7 @@
   }
 
   /* Bookmarks bar */
+  .bookmarks[hidden] { display: none; }
   .bookmarks {
     display: flex;
     align-items: center;
@@ -448,6 +449,8 @@ function setBrowserState(raw){
  $("star").classList.toggle("on",!!state.bookmarked);
  $("reloadIcon").parentElement.classList.toggle("spin",!!state.loading);
  renderTabs();renderBookmarks();
+ $("bookmarks").hidden=!(state.bookmarks||[]).length;
+ requestAnimationFrame(()=>call("setChromeHeight",Math.ceil($("window").getBoundingClientRect().height)));
 }
 function renderTabs(){
  const wrap=$("tabs");wrap.replaceChildren();
