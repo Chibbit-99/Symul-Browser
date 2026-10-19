@@ -189,8 +189,14 @@
     user-select: none; -webkit-user-select: none;
   }
   .title-brand { display: flex; align-items: center; gap: 8px; font-size: 12px;
-    font-weight: 600; flex: 1; height: 100%; min-width: 0; }
+    font-weight: 600; flex: 0 0 auto; height: 100%; min-width: 0; margin-right: 14px; }
   .title-brand-icon { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+  .current-tab-card { display: flex; align-items: center; gap: 8px; min-width: 0;
+    max-width: 320px; height: 26px; padding: 0 10px; border: 1px solid var(--border);
+    border-radius: 7px; background: var(--toolbar); color: var(--text); }
+  .current-tab-card img { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
+  .current-tab-card span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font-size: 11px; font-weight: 500; }
   .window-controls { display: flex; align-items: stretch; height: 36px; margin-left: auto; gap: 0; }
   .wc { width: 46px; height: 36px; border: 0; border-radius: 0; background: transparent;
     color: var(--text); display: grid; place-items: center; cursor: pointer; padding: 0; }
@@ -400,6 +406,10 @@
       <img class="title-brand-icon" src="../icon.png" alt="" draggable="false">
       <span>Symul Browser</span>
     </div>
+    <div class="current-tab-card" id="currentTabCard" title="Current tab">
+      <img id="currentTabFavicon" alt="" src="../icon.png" draggable="false">
+      <span id="currentTabTitle">New Tab</span>
+    </div>
     <div class="window-controls">
       <button class="wc" id="minimizeWindow" title="Minimise" aria-label="Minimise">
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 6h8"/></svg>
@@ -481,7 +491,7 @@ function setBrowserState(raw){
  $("starIcon").setAttribute("fill",state.bookmarked?"currentColor":"none");
  $("star").classList.toggle("on",!!state.bookmarked);
  $("reloadIcon").parentElement.classList.toggle("spin",!!state.loading);
- renderTabs();renderBookmarks();
+ renderTabs();renderBookmarks();renderCurrentTab();
  $("bookmarks").hidden=!(state.bookmarks||[]).length;
  requestAnimationFrame(()=>call("setChromeHeight",Math.ceil($("window").getBoundingClientRect().height)));
 }
@@ -495,6 +505,12 @@ function renderTabs(){
   close.addEventListener("click",e=>{e.stopPropagation();call("closeTab",i);});
   el.append(fav,title,close);el.addEventListener("click",()=>{call("selectTab",i);closeTabMenu();});wrap.append(el);
  });
+}
+function renderCurrentTab(){
+ const tab=(state.tabs||[])[state.active]||{};
+ $("currentTabTitle").textContent=tab.title||"New Tab";
+ $("currentTabCard").title=tab.title||"New Tab";
+ $("currentTabFavicon").src=tab.favicon||"../icon.png";
 }
 function renderBookmarks(){
  const wrap=$("bookmarkItems");wrap.replaceChildren();
