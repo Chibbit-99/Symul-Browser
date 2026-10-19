@@ -6,8 +6,9 @@ import os
 import sys
 from pathlib import Path
 from urllib.parse import quote, urlparse
+import base64
 
-from PySide6.QtCore import QObject, QPoint, QUrl, Qt, Slot
+from PySide6.QtCore import QObject, QPoint, QBuffer, QIODevice, QUrl, Qt, Slot
 from PySide6.QtGui import QAction, QColor, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
@@ -332,7 +333,20 @@ class SymulBrowser(QMainWindow):
             tab = self.tabs.widget(index)
             url = tab.view.url().toString()
             title = tab.view.title() or ("New Tab" if not url or url == "about:blank" else urlparse(url).hostname or url)
-            tab_states.append({"title": title, "url": "" if url == "about:blank" else url, "color": colors[index % len(colors)]})
+            favicon = tab.view.icon()
+            favicon_data = ""
+            if not favicon.isNull():
+                image_buffer = QBuffer()
+                image_buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+                if favicon.pixmap(32, 32).save(image_buffer, "PNG"):
+                    favicon_data = "data:image/png;base64," + base64.b64encode(bytes(image_buffer.data())).decode("ascii")
+                image_buffer.close()
+            tab_states.append({
+                "title": title,
+                "url": "" if url == "about:blank" else url,
+                "color": colors[index % len(colors)],
+                "favicon": favicon_data,
+            })
         url = current.view.url().toString() if current else ""
         state = {
             "tabs": tab_states, "active": self.tabs.currentIndex(),
