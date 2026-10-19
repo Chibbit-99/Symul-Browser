@@ -613,7 +613,7 @@ class SymulBrowser(QMainWindow):
             }
             QMenu::item:selected {
                 background-color: #35363a;
-                color: #202124;
+                color: #e8eaed;
             }
             QMenu::item:disabled { color: #9aa0a6; }
             QMenu::icon { padding-left: 2px; }
