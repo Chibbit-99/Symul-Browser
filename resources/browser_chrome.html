@@ -205,7 +205,7 @@
   .titlebar { position: relative; z-index: 5; }
   .current-tab-menu-icon { display: none; }
   .tab-dropdown {
-    position: absolute; top: 32px; left: 0; width: 310px; max-height: 260px;
+    position: absolute; top: 35px; left: 0; width: 310px; max-height: 260px;
     display: flex; flex-direction: column; gap: 3px; padding: 7px;
     background: var(--toolbar); color: var(--text); border: 1px solid var(--border);
     border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.22); z-index: 1000;
@@ -515,7 +515,7 @@ let tabDropdownOpen=false;\nfunction setBrowserState(raw){
  $("reloadIcon").parentElement.classList.toggle("spin",!!state.loading);
  renderBookmarks();renderCurrentTab();if(tabDropdownOpen)renderTabDropdown();
  $("bookmarks").hidden=!(state.bookmarks||[]).length;
- requestAnimationFrame(()=>call("setChromeHeight",Math.ceil($("window").getBoundingClientRect().height)));
+ requestAnimationFrame(()=>call("setChromeHeight",Math.ceil($("window").getBoundingClientRect().height)+(tabDropdownOpen?Math.min(260,42+(state.tabs||[]).length*38):0)));
 }
 function renderTabs(){
  const wrap=$("tabs");wrap.replaceChildren();
