@@ -240,8 +240,8 @@ class SymulBrowser(QMainWindow):
 
         # The browser chrome is rendered from the HTML prototype.
         self.chrome_view = QWebEngineView(root)
-        # The prototype has a tab strip, toolbar and bookmarks row (~116 px).
-        self.chrome_view.setFixedHeight(120)
+        # The embedded chrome contains only the toolbar and bookmarks row.
+        self.chrome_view.setFixedHeight(80)
         self.chrome_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         chrome_page = QWebEnginePage(self.profile, self.chrome_view)
         self.chrome_view.setPage(chrome_page)
