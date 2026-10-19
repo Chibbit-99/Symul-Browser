@@ -171,6 +171,9 @@ class BrowserChromeBridge(QObject):
         self.browser = browser
     @Slot()
     def ready(self): self.browser.sync_chrome()
+    @Slot(int)
+    def setChromeHeight(self, height):
+        self.browser.chrome_view.setFixedHeight(max(1, min(height, 120)))
     @Slot(str)
     def navigate(self, text):
         tab = self.browser.current_tab()
@@ -240,10 +243,10 @@ class SymulBrowser(QMainWindow):
 
         # The browser chrome is rendered from the HTML prototype.
         self.chrome_view = QWebEngineView(root)
-        # The embedded chrome contains only the toolbar and bookmarks row.
-        # Keep the widget close to their combined height and avoid Qt WebEngine's
-        # default black page background showing below the document content.
-        self.chrome_view.setFixedHeight(70)
+        # Size the embedded chrome to its actual HTML content. The page reports
+        # its height after rendering so an empty bookmarks row leaves no gap.
+        self.chrome_view.setMinimumHeight(45)
+        self.chrome_view.setMaximumHeight(120)
         self.chrome_view.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         chrome_page = QWebEnginePage(self.profile, self.chrome_view)
         chrome_page.setBackgroundColor(QColor("#ffffff"))
