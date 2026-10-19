@@ -565,8 +565,10 @@ function renderBookmarks(){
   btn.append(fav,document.createTextNode((b.title||b.url||"Bookmark").slice(0,24)));btn.title=b.url||"";btn.addEventListener("click",()=>call("openUrl",b.url||""));wrap.append(btn);
  });
 }
-function closeTabMenu(){$("tabPopup").hidden=true;}
-$("currentTabCard").addEventListener("click",()=>call("showTabMenu"));
+function closeTabMenu(){setTabDropdown(false);}
+$("currentTabCard").addEventListener("click",()=>setTabDropdown(!tabDropdownOpen));
+$("tabDropdownNew").addEventListener("click",()=>{call("newTab");setTabDropdown(false);});
+document.addEventListener("mousedown",e=>{if(tabDropdownOpen&&!e.target.closest("#tabDropdown")&&!e.target.closest("#currentTabCard"))setTabDropdown(false);});
 $("address").addEventListener("keydown",e=>{if(e.key==="Enter"){call("navigate",$("address").value);$("address").blur();}if(e.key==="Escape"){$("address").blur();setBrowserState(state);}});
 $("address").addEventListener("focus",e=>e.target.select());
 $("back").addEventListener("click",()=>call("back"));$("forward").addEventListener("click",()=>call("forward"));$("reload").addEventListener("click",()=>call("reload"));$("home").addEventListener("click",()=>call("home"));$("star").addEventListener("click",()=>call("toggleBookmark"));
