@@ -596,9 +596,9 @@ class SymulBrowser(QMainWindow):
             menu.setStyle(fusion_style)
         menu.setStyleSheet("""
             QMenu {
-                background-color: #dee1e6;
-                color: #202124;
-                border: 1px solid #c5c9d0;
+                background-color: #1f1f23;
+                color: #e8eaed;
+                border: 1px solid #3c4043;
                 border-radius: 10px;
                 padding: 6px;
                 font-size: 10pt;
@@ -612,10 +612,10 @@ class SymulBrowser(QMainWindow):
                 min-height: 20px;
             }
             QMenu::item:selected {
-                background-color: #cfd3da;
+                background-color: #35363a;
                 color: #202124;
             }
-            QMenu::item:disabled { color: #5f6368; }
+            QMenu::item:disabled { color: #9aa0a6; }
             QMenu::icon { padding-left: 2px; }
             QMenu::separator {
                 height: 1px;
