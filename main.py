@@ -619,8 +619,12 @@ class SymulBrowser(QMainWindow):
             QMenu::icon { padding-left: 2px; }
             QMenu::separator {
                 height: 1px;
-                background-color: #c5c9d0;
+                background: #3c4043;
+                color: #3c4043;
+                border: none;
                 margin: 6px 8px;
+                padding: 0;
+                max-height: 1px;
             }
         """)
         for i in range(self.tabs.count()):
